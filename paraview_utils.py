@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 reader_s = simple.OpenDataFile("output/surf_opt.vts")
-rep = simple.Show(reader_s)
+rep_s = simple.Show(reader_s)
 
 # Set background color to black
 camera = simple.GetActiveCamera()
@@ -14,8 +14,8 @@ view = simple.GetActiveView()
 simple.SetViewProperties(Background=[0.0, 0.0, 0.0],
                           UseColorPaletteForBackground = 0)
 # Color by the parameter B_N
-simple.ColorBy(rep, "B_N")
-rep.RescaleTransferFunctionToDataRange(True)
+simple.ColorBy(rep_s, "B_N")
+rep_s.RescaleTransferFunctionToDataRange(True)
 display.SetScalarBarVisibility(view, True)
 
 # Read the curve files for the coils
@@ -25,16 +25,21 @@ rep_c = simple.Show(reader_c)
 
 #simple.Interact()
 
-init_pos = camera.GetPosition()
+init_pos = camera.GetPosition() * 8
 angle = 0.0
 while True:
   start_time = time.time()
   camera.SetPosition((np.sin(angle)*np.linalg.norm(init_pos), 0, np.cos(angle)*np.linalg.norm(init_pos)))
   simple.Show()
   simple.Render()
-  #simple.ReloadFiles(reader_s)
+  simple.ReloadFiles(reader_s)
+  rep_s.RescaleTransferFunctionToDataRange(True)
   simple.ReloadFiles(reader_c)
-  rep_c.RescaleTransferFunctionToDataRange(True)
+  #rep_c.RescaleTransferFunctionToDataRange(True)
 
   dt = time.time() - start_time
-  #angle += np.deg2rad(20*dt)
+  if (dt<0.015):
+    time.sleep(0.015-dt)
+    dt = 0.015
+
+  angle += np.deg2rad(20*dt)
