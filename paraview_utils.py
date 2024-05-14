@@ -25,11 +25,12 @@ rep_c = simple.Show(reader_c)
 
 #simple.Interact()
 
-init_pos = camera.GetPosition() * 8
+init_pos = camera.GetPosition() * 12
 angle = 0.0
 while True:
   start_time = time.time()
   camera.SetPosition((np.sin(angle)*np.linalg.norm(init_pos), 0, np.cos(angle)*np.linalg.norm(init_pos)))
+  # simple.Interact()
   simple.Show()
   simple.Render()
   simple.ReloadFiles(reader_s)
@@ -42,4 +43,4 @@ while True:
     time.sleep(0.015-dt)
     dt = 0.015
 
-  angle += np.deg2rad(20*dt)
+  #angle += np.deg2rad(20*dt)
