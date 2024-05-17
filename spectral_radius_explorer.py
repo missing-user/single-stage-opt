@@ -4,9 +4,13 @@ import simsopt.geo
 import dash_bootstrap_components as dbc
 import pandas as pd
 import numpy as np
+
+import plotly.io as pio
 import plotly.express as px
 import os
 import json
+
+pio.templates.default = "plotly_dark"
 
 import diskcache
 
@@ -30,34 +34,39 @@ all_paths = list(reversed(sorted(directories)))
 app.layout = dash.html.Div(
     [
         dbc.Row(
-            dash.dcc.Dropdown(options=all_paths, value=all_paths[0], id="fileselect")
+            [
+                dbc.Col(
+                    dash.dcc.Dropdown(
+                        options=all_paths, value=all_paths[0], id="fileselect"
+                    )
+                ),
+                dbc.Col(dash.dcc.Slider(0, 1, 0.05, value=0.5, id="threshold-slider")),
+            ]
         ),
         dbc.Row(dash.html.Progress(id="progress_bar")),
         dbc.Row(
             [
-                dbc.Col(
-                    dash.dcc.Loading(
-                        dash.dcc.Graph(
-                            id="figure1",
-                        )
-                    )
-                ),
-                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="hover_fig"))),
+                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="figure1", figure={}))),
+                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="hover_fig", figure={}))),
             ]
         ),
         dbc.Row(
             [
-                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="BdotN"))),
-                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="Btarget"))),
+                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="BdotN", figure={}))),
+                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="Btarget", figure={}))),
+                # dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="BdotNfft", figure={}))),
+                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="Btargetfft", figure={}))),
             ]
         ),
-    ]
+    ],
+    **{"data-bs-theme": "dark"}
 )
 
 
 @app.long_callback(
     dash.Output("figure1", "figure"),
     dash.Input("fileselect", "value"),
+    dash.Input("threshold-slider", "value"),
     running=[
         (
             dash.Output("progress_bar", "style"),
@@ -65,10 +74,10 @@ app.layout = dash.html.Div(
             {"visibility": "hidden"},
         )
     ],
+    manager=long_callback_manager,
     progress=[dash.Output("progress_bar", "value"), dash.Output("progress_bar", "max")],
-    prevent_intial_callback=True,
 )
-def load_results(set_progress, filepath):
+def load_results(set_progress, filepath, success_threshold):
     analysis_folder = os.path.join(filepath)
     results = []
     i = 0
@@ -89,7 +98,7 @@ def load_results(set_progress, filepath):
     df["complexity"] = df["complexity"].astype(float)
     df["magnitude"] = df["magnitude"].astype(float)
     # df["run_id"] = df.index
-    df["success"] = df["B.n residual max"] < df["B target max"] / 2
+    df["success"] = df["B.n residual max"] < df["B target max"] * success_threshold
     fig = px.scatter(
         df.select_dtypes(exclude=["object"]),
         "spectral_radius",
@@ -97,62 +106,64 @@ def load_results(set_progress, filepath):
         color="B.n residual max",
         range_color=[0, 2],
         symbol="success",
+        # symbol_sequence=["circle", "x"],
         hover_data={"filename": True},
-        template="plotly_dark",
     )
-    return fig.update_layout(height=600, clickmode="event+select")
+    return fig.update_layout(clickmode="event+select", height=600)
 
 
 @app.callback(
     dash.Output("BdotN", "figure"),
     dash.Output("Btarget", "figure"),
+    # dash.Output("BdotNfft", "figure"),
+    dash.Output("Btargetfft", "figure"),
     dash.Input("figure1", "hoverData"),
     dash.Input("fileselect", "value"),
 )
 def display_hover_data1(hoverData, filepath):
     if not hoverData or not filepath:
-        return None, None
-    print(hoverData, filepath)
+        return {}, {}, {}
 
     result_path = str(hoverData["points"][0]["customdata"][0])
     optimization_res = simsopt.load(os.path.join(filepath, result_path))
+
+    targetmin, targetmax = np.min(optimization_res["B_external_normal"]), np.max(
+        optimization_res["B_external_normal"]
+    )
     return (
         px.imshow(
             optimization_res["BdotN"],
             title="B.n residual",
-            # template="plotly_dark",
+            range_color=[targetmin, targetmax],
         ),
         px.imshow(
             optimization_res["B_external_normal"],
             title="B.n target",
-            # template="plotly_dark",
+        ),
+        px.imshow(
+            np.fft.fftshift(np.fft.fft2(optimization_res["B_external_normal"])).imag,
+            title="B.n target FFT",
         ),
     )
 
 
-# @app.callback(
-#     dash.Output("hover_fig", "figure"),
-#     dash.Input("figure1", "clickData"),
-#     dash.State("fileselect", "value"),
-# )
-# def display_hover_data(hoverData, filepath):
-#     if not hoverData or not filepath:
-#         return None
+@app.callback(
+    dash.Output("hover_fig", "figure"),
+    dash.Input("figure1", "clickData"),
+    dash.State("fileselect", "value"),
+)
+def display_hover_data(hoverData, filepath):
+    if not hoverData or not filepath:
+        return {}
 
-#     result_path = str(hoverData["points"][0]["customdata"][0])
-#     optimization_res = simsopt.load(os.path.join(filepath, result_path))
-#     # print(optimization_res)
-#     # import plotly.graph_objects as go
+    result_path = str(hoverData["points"][0]["customdata"][0])
+    optimization_res = simsopt.load(os.path.join(filepath, result_path))
 
-#     # fig = go.Figure()
-#     fig = simsopt.geo.plot(
-#         [optimization_res["surf"]] + optimization_res["coils"],
-#         # fig,
-#         show=False,
-#         engine="plotly",
-#     )
-#     print(fig)
-#     return fig
+    return simsopt.geo.plot(
+        [optimization_res["surf"]] + optimization_res["coils"],
+        show=False,
+        engine="plotly",
+    ).update_layout(height=600)
 
 
 app.run(debug=True)
