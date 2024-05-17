@@ -109,7 +109,7 @@ def load_results(set_progress, filepath, success_threshold):
         # symbol_sequence=["circle", "x"],
         hover_data={"filename": True},
     )
-    return fig.update_layout(clickmode="event+select", height=600)
+    return fig.update_layout(clickmode="event", height=600)
 
 
 @app.callback(
