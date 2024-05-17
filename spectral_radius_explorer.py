@@ -130,6 +130,7 @@ def display_hover_data1(hoverData, filepath):
     targetmin, targetmax = np.min(optimization_res["B_external_normal"]), np.max(
         optimization_res["B_external_normal"]
     )
+    extnorm = optimization_res["B_external_normal"]
     return (
         px.imshow(
             optimization_res["BdotN"],
@@ -137,12 +138,18 @@ def display_hover_data1(hoverData, filepath):
             range_color=[targetmin, targetmax],
         ),
         px.imshow(
-            optimization_res["B_external_normal"],
+            extnorm,
             title="B.n target",
         ),
         px.imshow(
-            np.fft.fftshift(np.fft.fft2(optimization_res["B_external_normal"])).imag,
+            np.fft.fftshift(np.fft.fft2(extnorm)).imag,
             title="B.n target FFT",
+            x=np.fft.fftshift(
+                np.fft.fftfreq(extnorm.shape[1], d=1.0 / extnorm.shape[1])
+            ),
+            y=np.fft.fftshift(
+                np.fft.fftfreq(extnorm.shape[0], d=1.0 / extnorm.shape[0])
+            ),
         ),
     )
 
