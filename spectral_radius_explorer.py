@@ -40,7 +40,12 @@ app.layout = dash.html.Div(
                         options=all_paths, value=all_paths[0], id="fileselect"
                     )
                 ),
-                dbc.Col(dash.dcc.Slider(0, 1, 0.05, value=0.5, id="threshold-slider")),
+                dbc.Col(
+                    [
+                        dash.html.Label("Success Threshold"),
+                        dash.dcc.Slider(0, 1, 0.05, value=0.5, id="threshold-slider"),
+                    ]
+                ),
             ]
         ),
         dbc.Row(dash.html.Progress(id="progress_bar")),
@@ -105,6 +110,9 @@ def load_results(set_progress, filepath):
     df["J"] = df["J"].astype(float)
     df["B target max"] = df["B_external_normal"].apply(np.max)
     df["B.n residual max"] = df["BdotN"].apply(np.max)
+    df["energy"] = df["B_external_normal"].apply(
+        lambda x: np.sum(np.fft.fft2(x).imag ** 2)
+    )
     df["spectral_radius"] = df["spectral_radius"].astype(float)
     df["complexity"] = df["complexity"].astype(float)
     df["magnitude"] = df["magnitude"].astype(float)
@@ -118,15 +126,14 @@ def load_results(set_progress, filepath):
 )
 def scatterplot(dfstore, success_threshold):
     df = pd.DataFrame(dfstore).convert_dtypes()
-    df["success"] = df["B.n residual max"] < df["B target max"] * success_threshold
+    df["max residual to target ratio"] = df["B.n residual max"] / df["B target max"]
+
     fig = px.scatter(
-        df,
-        "spectral_radius",
+        df[df["max residual to target ratio"] <= success_threshold],
+        "energy",  # "spectral_radius",
         "complexity",
-        color="B.n residual max",
-        range_color=[0, 2],
-        symbol="success",
-        # symbol_sequence=["circle", "x"],
+        color="max residual to target ratio",
+        range_color=[0, 1],
         hover_data={"filename": True},
     )
     return fig.update_layout(clickmode="event", height=600)
@@ -190,6 +197,7 @@ def display_hover_data(hoverData, filepath):
         [optimization_res["surf"]] + optimization_res["coils"],
         show=False,
         engine="plotly",
+        close=True,
     ).update_layout(height=600, title=result_path)
 
 
