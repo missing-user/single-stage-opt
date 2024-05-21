@@ -58,15 +58,15 @@ app.layout = dash.html.Div(
                 dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="Btargetfft", figure={}))),
             ]
         ),
+        dash.dcc.Store(id="df-store"),
     ],
-    **{"data-bs-theme": "dark"}
+    **{"data-bs-theme": "dark"},
 )
 
 
 @app.long_callback(
-    dash.Output("figure1", "figure"),
+    dash.Output("df-store", "data"),
     dash.Input("fileselect", "value"),
-    dash.Input("threshold-slider", "value"),
     running=[
         (
             dash.Output("progress_bar", "style"),
@@ -77,14 +77,25 @@ app.layout = dash.html.Div(
     manager=long_callback_manager,
     progress=[dash.Output("progress_bar", "value"), dash.Output("progress_bar", "max")],
 )
-def load_results(set_progress, filepath, success_threshold):
+def load_results(set_progress, filepath):
     analysis_folder = os.path.join(filepath)
     results = []
     i = 0
     all_files = os.listdir(analysis_folder)
     for i, path in enumerate(all_files):
         if path.endswith(".json"):
-            optimization_res = simsopt.load(analysis_folder + "/" + path)
+            # optimization_res = simsopt.load(analysis_folder + "/" + path)
+            with open(analysis_folder + "/" + path) as f:
+                optimization_res_sopt = json.load(f)
+                optimization_res = {}
+                for key in optimization_res_sopt["graph"]:
+                    if isinstance(optimization_res_sopt["graph"][key], dict):
+                        if "@module" in optimization_res_sopt["graph"][key]:
+                            optimization_res[key] = optimization_res_sopt["graph"][key][
+                                "data"
+                            ]
+                    else:
+                        optimization_res[key] = optimization_res_sopt["graph"][key]
             optimization_res["filename"] = str(path)
             results.append(optimization_res)
 
@@ -97,10 +108,19 @@ def load_results(set_progress, filepath, success_threshold):
     df["spectral_radius"] = df["spectral_radius"].astype(float)
     df["complexity"] = df["complexity"].astype(float)
     df["magnitude"] = df["magnitude"].astype(float)
-    # df["run_id"] = df.index
+    return df.select_dtypes(exclude=["object"]).to_dict("records")
+
+
+@app.callback(
+    dash.Output("figure1", "figure"),
+    dash.Input("df-store", "data"),
+    dash.Input("threshold-slider", "value"),
+)
+def scatterplot(dfstore, success_threshold):
+    df = pd.DataFrame(dfstore).convert_dtypes()
     df["success"] = df["B.n residual max"] < df["B target max"] * success_threshold
     fig = px.scatter(
-        df.select_dtypes(exclude=["object"]),
+        df,
         "spectral_radius",
         "complexity",
         color="B.n residual max",
@@ -139,7 +159,7 @@ def display_hover_data1(hoverData, filepath):
         ),
         px.imshow(
             extnorm,
-            title="B.n target",
+            title=f"B.n target ({result_path})",
         ),
         px.imshow(
             np.fft.fftshift(np.fft.fft2(extnorm)).imag,
@@ -170,7 +190,7 @@ def display_hover_data(hoverData, filepath):
         [optimization_res["surf"]] + optimization_res["coils"],
         show=False,
         engine="plotly",
-    ).update_layout(height=600)
+    ).update_layout(height=600, title=result_path)
 
 
 app.run(debug=True)
