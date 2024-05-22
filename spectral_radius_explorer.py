@@ -36,9 +36,12 @@ app.layout = dash.html.Div(
         dbc.Row(
             [
                 dbc.Col(
-                    dash.dcc.Dropdown(
-                        options=all_paths, value=all_paths[0], id="fileselect"
-                    )
+                    [
+                        dash.dcc.Dropdown(
+                            options=all_paths, value=all_paths[0], id="fileselect"
+                        ),
+                        dash.dcc.Dropdown(id="scalarselect"),
+                    ]
                 ),
                 dbc.Col(
                     [
@@ -111,7 +114,7 @@ def load_results(set_progress, filepath):
     df["B target max"] = df["B_external_normal"].apply(np.max)
     df["B.n residual max"] = df["BdotN"].apply(np.max)
     df["energy"] = df["B_external_normal"].apply(
-        lambda x: np.sum(np.fft.fft2(x).imag ** 2)
+        lambda x: np.sum(np.abs(np.fft.fft2(x).imag))
     )
     df["spectral_radius"] = df["spectral_radius"].astype(float)
     df["complexity"] = df["complexity"].astype(float)
@@ -119,18 +122,25 @@ def load_results(set_progress, filepath):
     return df.select_dtypes(exclude=["object"]).to_dict("records")
 
 
+@app.callback(dash.Output("scalarselect", "options"), dash.Input("df-store", "data"))
+def dropdown(dfstore):
+    df = pd.DataFrame(dfstore).convert_dtypes()
+    return df.select_dtypes(include=["number"]).columns.tolist()
+
+
 @app.callback(
     dash.Output("figure1", "figure"),
     dash.Input("df-store", "data"),
     dash.Input("threshold-slider", "value"),
+    dash.Input("scalarselect", "value"),
 )
-def scatterplot(dfstore, success_threshold):
+def scatterplot(dfstore, success_threshold, xscalar):
     df = pd.DataFrame(dfstore).convert_dtypes()
     df["max residual to target ratio"] = df["B.n residual max"] / df["B target max"]
 
     fig = px.scatter(
         df[df["max residual to target ratio"] <= success_threshold],
-        "energy",  # "spectral_radius",
+        xscalar,
         "complexity",
         color="max residual to target ratio",
         range_color=[0, 1],
