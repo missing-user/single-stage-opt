@@ -293,49 +293,41 @@ def main(fname):
 
     v_slices = [0, 0.25, 0.5, 0.75]
 
-    # import plotly.graph_objects as go
+    x_middle = r_middle[: r_middle.shape[0] // 2, :, 0]
+    y_middle = r_middle[: r_middle.shape[0] // 2, :, 1]
+    z_middle = r_middle[: r_middle.shape[0] // 2, :, 2]
 
-    # fig = go.Figure()
+    x_outer = r_outer[: r_middle.shape[0] // 2, :, 0]
+    y_outer = r_outer[: r_middle.shape[0] // 2, :, 1]
+    z_outer = r_outer[: r_middle.shape[0] // 2, :, 2]
 
-    # # Add the first surface (r_plasma)
-    # fig.add_trace(
-    #     go.Surface(
-    #         z=r_plasma[:, :, 2],
-    #         x=r_plasma[:, :, 0],
-    #         y=r_plasma[:, :, 1],
-    #         colorscale="Viridis",
-    #         name="r_plasma",
-    #     )
-    # )
-    # fig.show()
-    # fig = go.Figure()
+    # Create a figure and two subplots for the two surfaces
 
-    # # Add the second surface (r_middle)
-    # fig.add_trace(
-    #     go.Surface(
-    #         z=r_middle[:, :, 2],
-    #         x=r_middle[:, :, 0],
-    #         y=r_middle[:, :, 1],
-    #         colorscale="Cividis",
-    #         name="r_middle",
-    #         showscale=False,
-    #     )
-    # )
-    # fig.show()
-    # fig = go.Figure()
+    figureNum += 1
+    fig = plt.figure(figureNum, figsize=(10, 6))
 
-    # # Add the third surface (r_outer)
-    # fig.add_trace(
-    #     go.Surface(
-    #         z=r_outer[:, :, 2],
-    #         x=r_outer[:, :, 0],
-    #         y=r_outer[:, :, 1],
-    #         colorscale="Plasma",
-    #         name="r_outer",
-    #         showscale=False,
-    #     )
-    # )
-    # fig.show()
+    # First subplot for r_middle
+    ax1 = fig.add_subplot(132, projection="3d")
+    ax1.plot_surface(x_middle, y_middle, z_middle, cmap="plasma")
+    ax1.set_title("r_middle")
+    ax1.set_xlabel("X Axis")
+    ax1.set_ylabel("Y Axis")
+    ax1.set_zlabel("Z Axis")
+    ax1.set_aspect("equal", adjustable="box")
+
+    # Second subplot for r_outer
+    ax2 = fig.add_subplot(133, projection="3d")
+    ax2.plot_surface(x_outer, y_outer, z_outer, cmap="plasma")
+    ax2.set_title("r_outer")
+    ax2.set_xlabel("X Axis")
+    ax2.set_ylabel("Y Axis")
+    ax2.set_zlabel("Z Axis")
+    ax2.set_aspect("equal", adjustable="box")
+
+    # Show the plot
+    plt.tight_layout()
+    maximizeWindow()
+
     R_slice_plasma, Z_slice_plasma = getCrossSection(r_plasma, vl_plasma, v_slices)
     R_slice_middle, Z_slice_middle = getCrossSection(r_middle, vl_middle, v_slices)
     R_slice_outer, Z_slice_outer = getCrossSection(r_outer, vl_outer, v_slices)
