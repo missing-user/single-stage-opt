@@ -7,35 +7,61 @@ from scipy.io import netcdf_file
 import os
 
 
-def netcdf_from_surface(surface: simsopt.geo.SurfaceRZFourier):
+def lhs_to_rhs_surface(surface: simsopt.geo.SurfaceRZFourier):
+    # Right and left handed coordinates. Flip the signs of sin(theta) to match
+    surface.zs = -surface.zs
+    surface.rs = -surface.rs
+    return surface
 
-    filename_out = "wout_surfaces_python_generated.nc"
+
+def minimum_coil_surf_distance(curves, lcfs) -> float:
+    min_dist = np.inf
+    pointcloud1 = lcfs.gamma().reshape((-1, 3))
+    for c in curves:
+        pointcloud2 = c.gamma()
+        min_dist = min(min_dist, np.min(cdist(pointcloud1, pointcloud2)))
+        # Equivalent python code:
+        # for point in pointcloud2:
+        #   min_dist = min(min_dist, np.min(np.linalg.norm(pointcloud1 - point, axis=-1)))
+
+    return float(min_dist)
+
+
+def read_netcdf(filename: str):
+    with netcdf_file(filename, "r", mmap=False) as f:
+        mpol = int(f.variables["mpol"][()]) - 1
+        ntor = int(f.variables["ntor"][()])
+        nfp = int(f.variables["nfp"][()])
+        surface = simsopt.geo.SurfaceRZFourier(nfp)
+        surface.change_resolution(mpol, ntor)
+
+        mnmax = f.variables["xm"][()].shape[0]
+
+        for i, m, nnfp in zip(
+            range(mnmax), f.variables["xm"][()], f.variables["xn"][()]
+        ):
+            m = int(m)
+            n = int(nnfp / f.variables["nfp"][()])
+            surface.set_rc(m, n, f.variables["rmnc"][-1, i])
+            surface.set_zs(m, n, f.variables["zmns"][-1, i])
+
+        return surface
+
+
+def netcdf_from_surface(filename_out, surface: simsopt.geo.SurfaceRZFourier):
     filename = "../bdistrib/equilibria/wout_w7x_standardConfig.nc"
     os.system(f"cp {filename} {filename_out}")
 
     # Copy the file on disk with a new name, open with r+ and overwrite it.
     with netcdf_file(filename_out, "a", mmap=False) as f:
-        print(list(f.variables.keys()))
-        print(
-            f.variables["zmns"][()].shape,
-            f.variables["zmns"].units,
-            f.variables["zmns"].dimensions,
-            f.variables["zmns"][()].dtype,
-        )
-        print(np.max(f.variables["zmns"][()]))
-
-        # The plasma surface read in by bdistrib is zmns[ns] & rmnc[ns]
-        # nfp_vmec = nfp
-        # Rmajor_p = R0
+        # print(list(f.variables.keys()))
 
         # implicitly broadcasts the result throughout all flux surfaces
         mpol = int(f.variables["mpol"][()]) - 1
         ntor = int(f.variables["ntor"][()])
         surface.change_resolution(mpol, ntor)
         f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor :]
-        f.variables["zmns"][:] = -surface.zs.flatten()[
-            surface.ntor :
-        ]  # Right and left handed coordinates. Flip the signs of sin(theta) to match
+        f.variables["zmns"][:] = surface.zs.flatten()[surface.ntor :]
 
         f.variables["Rmajor_p"][()] = surface.major_radius()
         f.variables["nfp"][()] = surface.nfp
@@ -55,7 +81,14 @@ def netcdf_from_surface(surface: simsopt.geo.SurfaceRZFourier):
     return filename_out.replace("wout_", "")
 
 
-def write_bdistribin(netcdffilename, mpol=14, ntor=14, sep_outer=0.1):
+def write_bdistribin(
+    netcdf_filename,
+    mpol=14,
+    ntor=14,
+    sep_outer=0.1,
+    middle_surface_filename=None,
+    outer_surface_filename=None,
+):
     nu = 64
     nv = 256
 
@@ -82,13 +115,15 @@ def write_bdistribin(netcdffilename, mpol=14, ntor=14, sep_outer=0.1):
     ntor_outer  = {ntor}
 
     geometry_option_plasma = 2
-    wout_filename='{netcdffilename}'
+    wout_filename='{netcdf_filename}'
 
-    geometry_option_middle=2
+    geometry_option_middle={2 if middle_surface_filename is None else 3}
     separation_middle={sep_middle}
+    nescin_filename_middle='{middle_surface_filename}'
 
-    geometry_option_outer=2
+    geometry_option_outer={2 if outer_surface_filename is None else 3}
     separation_outer={sep_outer}
+    nescin_filename_outer='{outer_surface_filename}'
 
     pseudoinverse_thresholds = 1e-12
 
@@ -101,14 +136,90 @@ def write_bdistribin(netcdffilename, mpol=14, ntor=14, sep_outer=0.1):
     return filename_out
 
 
-def minimum_coil_surf_distance(curves, lcfs) -> float:
-    min_dist = np.inf
-    pointcloud1 = lcfs.gamma().reshape((-1, 3))
-    for c in curves:
-        pointcloud2 = c.gamma()
-        min_dist = min(min_dist, np.min(cdist(pointcloud1, pointcloud2)))
-        # Equivalent python code:
-        # for point in pointcloud2:
-        #   min_dist = min(min_dist, np.min(np.linalg.norm(pointcloud1 - point, axis=-1)))
+############# NESCIN
 
-    return float(min_dist)
+
+def read_nescin_file(filename: str, nfp):
+    surf = simsopt.geo.SurfaceRZFourier(nfp)
+    with open(filename, "r") as f:
+        lines = f.readlines()
+
+    mnmax = 0
+    for i, line in enumerate(lines):
+        if line.startswith("------ Current Surface"):
+            mnmax = int(lines[i + 2])
+            lines = lines[i + 5 :]
+            break
+    assert len(lines) == mnmax
+
+    mmax = 0
+    nmax = 0
+
+    for line in lines:
+        numbers = line.split()
+        m = int(numbers[0])
+        n = int(numbers[1])
+        mmax = max(abs(m), mmax)
+        nmax = max(abs(n), nmax)
+        surf.change_resolution(mmax, nmax)
+        surf.set_rc(m, n, float(numbers[2]))
+        surf.set_zs(m, n, float(numbers[3]))
+
+    return surf
+
+
+def write_nescin_file(filename: str, surface: simsopt.geo.SurfaceRZFourier):
+    with open(filename, "w") as f:
+        f.write(f"\n------ Current Surface: Coil-Plasma separation = 0.0 ----\n")
+        f.write("Number of fourier modes in table\n")
+        num_modes = len(surface.m) // 2 + 1
+        f.write(f" {num_modes}\n")
+
+        f.write("Table of fourier coefficients\n")
+        f.write("m,n,crc,czs,cls,crs,czc,clc\n")
+        m = surface.m
+        n = surface.n
+
+        for i in range(num_modes):
+            f.write(
+                f" {m[i]} {n[i]:+2d} {surface.get_rc(m[i], n[i]): .12E} {surface.get_zs(m[i], n[i]): .12E} {0: .12E} {surface.get_rs(m[i], n[i]) if not surface.stellsym else 0: .12E} {surface.get_zc(m[i], n[i])  if not surface.stellsym else 0: .12E} {0: .12E}\n"
+            )
+
+
+##### UNIT TESTS
+
+if __name__ == "__main__":
+    import random
+
+    def compare_surfaces(s1, s2):
+        assert s1.ntor == s2.ntor
+        assert s1.mpol == s2.mpol
+        return (
+            s1.nfp == s2.nfp
+            and s1.ntor == s2.ntor
+            and s1.mpol == s2.mpol
+            and np.allclose(s1.rc, s2.rc)
+            and np.allclose(s1.zs, s2.zs)
+            and np.allclose(s1.zc, s2.zc)
+            and np.allclose(s1.rs, s2.rs)
+        )
+
+    surf = simsopt.geo.SurfaceRZFourier(5, ntor=5, mpol=3)
+    assert compare_surfaces(surf, surf)  # Confirm comparison works at all
+
+    for m in range(3):
+        for n in range(5):
+            surf.set_rc(m, n, random.random())
+            surf.set_zs(m, n, random.random())
+
+    print("Nescin")
+    write_nescin_file("nescin.unit_test", surf)
+    nescinsurf = read_nescin_file("nescin.unit_test", 5)
+    assert compare_surfaces(surf, nescinsurf)
+
+    print("NetCDF")
+    netcdf_from_surface("unit_test.nc", surf)
+    ncdfsurf2 = read_netcdf("unit_test.nc")
+    assert compare_surfaces(surf, ncdfsurf2)
+
+    print("Success")
