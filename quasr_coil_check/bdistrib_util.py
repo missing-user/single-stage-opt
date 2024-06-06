@@ -43,17 +43,17 @@ def read_netcdf(filename: str):
             m = int(m)
             n = int(nnfp / f.variables["nfp"][()])
             surface.set_rc(m, n, f.variables["rmnc"][-1, i])
-            surface.set_zs(m, n, f.variables["zmns"][-1, i])
+            surface.set_zs(m, n, -f.variables["zmns"][-1, i])
 
         return surface
 
 
-def netcdf_from_surface(filename_out, surface: simsopt.geo.SurfaceRZFourier):
-    filename = "../bdistrib/equilibria/wout_w7x_standardConfig.nc"
-    os.system(f"cp {filename} {filename_out}")
+def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
+    filename_template = "../bdistrib/equilibria/wout_w7x_standardConfig.nc"
+    os.system(f"cp {filename_template} {filename}")
 
     # Copy the file on disk with a new name, open with r+ and overwrite it.
-    with netcdf_file(filename_out, "a", mmap=False) as f:
+    with netcdf_file(filename, "a", mmap=False) as f:
         # print(list(f.variables.keys()))
 
         # implicitly broadcasts the result throughout all flux surfaces
@@ -61,7 +61,7 @@ def netcdf_from_surface(filename_out, surface: simsopt.geo.SurfaceRZFourier):
         ntor = int(f.variables["ntor"][()])
         surface.change_resolution(mpol, ntor)
         f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor :]
-        f.variables["zmns"][:] = surface.zs.flatten()[surface.ntor :]
+        f.variables["zmns"][:] = -surface.zs.flatten()[surface.ntor :]
 
         f.variables["Rmajor_p"][()] = surface.major_radius()
         f.variables["nfp"][()] = surface.nfp
@@ -78,19 +78,19 @@ def netcdf_from_surface(filename_out, surface: simsopt.geo.SurfaceRZFourier):
         # HACK sets the success flag to true so the input reading doesnt fail
         f.variables["ier_flag"][()] = 0
 
-    return filename_out.replace("wout_", "")
+    return filename.replace("wout_", "")
 
 
 def write_bdistribin(
     netcdf_filename,
-    mpol=14,
-    ntor=14,
+    mpol=8,
+    ntor=8,
     sep_outer=0.1,
     middle_surface_filename=None,
     outer_surface_filename=None,
 ):
     nu = 64
-    nv = 256
+    nv = 128
 
     sep_middle = sep_outer / 2
 
@@ -154,14 +154,20 @@ def read_nescin_file(filename: str, nfp):
 
     mmax = 0
     nmax = 0
-
     for line in lines:
         numbers = line.split()
         m = int(numbers[0])
         n = int(numbers[1])
         mmax = max(abs(m), mmax)
         nmax = max(abs(n), nmax)
-        surf.change_resolution(mmax, nmax)
+    surf.change_resolution(mmax, nmax)
+
+    for line in lines:
+        numbers = line.split()
+        m = int(numbers[0])
+        n = int(numbers[1])
+        if m == 0:
+            n = abs(n)
         surf.set_rc(m, n, float(numbers[2]))
         surf.set_zs(m, n, float(numbers[3]))
 
@@ -176,13 +182,13 @@ def write_nescin_file(filename: str, surface: simsopt.geo.SurfaceRZFourier):
         f.write(f" {num_modes}\n")
 
         f.write("Table of fourier coefficients\n")
-        f.write("m,n,crc,czs,cls,crs,czc,clc\n")
+        f.write("m,n,crc,czs,crs,czc\n")
         m = surface.m
         n = surface.n
 
         for i in range(num_modes):
             f.write(
-                f" {m[i]} {n[i]:+2d} {surface.get_rc(m[i], n[i]): .12E} {surface.get_zs(m[i], n[i]): .12E} {0: .12E} {surface.get_rs(m[i], n[i]) if not surface.stellsym else 0: .12E} {surface.get_zc(m[i], n[i])  if not surface.stellsym else 0: .12E} {0: .12E}\n"
+                f" {m[i]} {n[i]:+2d} {surface.get_rc(m[i], n[i]): .12E} {surface.get_zs(m[i], n[i]): .12E} {surface.get_rs(m[i], n[i]) if not surface.stellsym else 0: .12E} {surface.get_zc(m[i], n[i])  if not surface.stellsym else 0: .12E}\n"
             )
 
 
@@ -207,8 +213,9 @@ if __name__ == "__main__":
     surf = simsopt.geo.SurfaceRZFourier(5, ntor=5, mpol=3)
     assert compare_surfaces(surf, surf)  # Confirm comparison works at all
 
-    for m in range(3):
-        for n in range(5):
+    for m in range(3 + 1):
+        nmin = -5 if m > 0 else 0
+        for n in range(nmin, 5 + 1):
             surf.set_rc(m, n, random.random())
             surf.set_zs(m, n, random.random())
 
@@ -218,8 +225,12 @@ if __name__ == "__main__":
     assert compare_surfaces(surf, nescinsurf)
 
     print("NetCDF")
-    netcdf_from_surface("unit_test.nc", surf)
+    write_netcdf("unit_test.nc", surf)
     ncdfsurf2 = read_netcdf("unit_test.nc")
     assert compare_surfaces(surf, ncdfsurf2)
+
+    # lhs is an inplace operation, does not return a copy
+    assert not compare_surfaces(surf, lhs_to_rhs_surface(ncdfsurf2))
+    assert compare_surfaces(surf, lhs_to_rhs_surface(ncdfsurf2))
 
     print("Success")
