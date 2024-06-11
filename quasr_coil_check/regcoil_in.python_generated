@@ -1,0 +1,12 @@
+&regcoil_nml
+  general_option = 1
+  ! nlambda = 20
+
+  geometry_option_plasma = 2
+  wout_filename='wout_surfaces_python_generated.nc'
+
+  geometry_option_coil=3
+  nescin_filename = 'nescin.winding_surface'
+
+  symmetry_option = 3
+/
