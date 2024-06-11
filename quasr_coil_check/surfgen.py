@@ -80,13 +80,13 @@ def surfgen(
     wrapping_surf = simsopt.geo.SurfaceRZFourier.from_nphi_ntheta(
         32, 32, nfp=surface_copy.nfp
     )
+    surface_copy.change_resolution(max(1, surface_copy.mpol), max(1, surface_copy.ntor))
     wrapping_surf.change_resolution(1, 1)
 
     for m, n in zip(wrapping_surf.m, wrapping_surf.n):
         wrapping_surf.set_rc(m, n, surface_copy.get_rc(m, n))
         wrapping_surf.set_zs(m, n, surface_copy.get_zs(m, n))
 
-    wrapping_surf.change_resolution(1, 1)
     wrapping_surf.scale(1.5)
     wrapping_surf.fix("rc(0,0)")
     wrapping_surf.set_lower_bound("rc(1,0)", wrapping_surf.get_rc(1, 0))
@@ -103,7 +103,11 @@ def surfgen(
 
     if iterative_constraits:
         for fourier_resolution in range(3):
-            least_squares_serial_solve(problem, ftol=1e-5)
+            # least_squares_serial_solve(problem, ftol=1e-5, max_nfev=50)
+            result = scipy.optimize.least_squares(
+                problem.residuals, problem.x.copy(), ftol=1e-5, max_nfev=50
+            )
+            problem.x = result.x
 
             wrapping_surf.change_resolution(
                 wrapping_surf.mpol + 1, wrapping_surf.ntor + 1
@@ -113,7 +117,11 @@ def surfgen(
             )
     else:
         wrapping_surf.change_resolution(3, 2)
-        least_squares_serial_solve(problem, ftol=1e-5)
+        # least_squares_serial_solve(problem, ftol=1e-5, max_nfev=50)
+        result = scipy.optimize.least_squares(
+            problem.residuals, problem.x.copy(), ftol=1e-5, max_nfev=50
+        )
+        problem.x = result.x
 
     return wrapping_surf
 
@@ -121,4 +129,5 @@ def surfgen(
 if __name__ == "__main__":
     simple_torus = simsopt.geo.SurfaceRZFourier(5)
 
-    surfgen(simple_torus, 0.2).plot()
+    surfgen(simple_torus, 0.2, False).plot()
+    surfgen(simple_torus, 0.2, True).plot()

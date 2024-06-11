@@ -293,6 +293,10 @@ def main(fname):
 
     v_slices = [0, 0.25, 0.5, 0.75]
 
+    x_plasma = r_plasma[: r_plasma.shape[0] // 2, :, 0]
+    y_plasma = r_plasma[: r_plasma.shape[0] // 2, :, 1]
+    z_plasma = r_plasma[: r_plasma.shape[0] // 2, :, 2]
+
     x_middle = r_middle[: r_middle.shape[0] // 2, :, 0]
     y_middle = r_middle[: r_middle.shape[0] // 2, :, 1]
     z_middle = r_middle[: r_middle.shape[0] // 2, :, 2]
@@ -306,14 +310,23 @@ def main(fname):
     figureNum += 1
     fig = plt.figure(figureNum, figsize=(10, 6))
 
-    # First subplot for r_middle
-    ax1 = fig.add_subplot(132, projection="3d")
-    ax1.plot_surface(x_middle, y_middle, z_middle, cmap="plasma")
-    ax1.set_title("r_middle")
+    ax1 = fig.add_subplot(131, projection="3d")
+    ax1.plot_surface(x_plasma, y_plasma, z_plasma, cmap="plasma")
+    ax1.set_title("r_plasma")
     ax1.set_xlabel("X Axis")
     ax1.set_ylabel("Y Axis")
     ax1.set_zlabel("Z Axis")
     ax1.set_aspect("equal", adjustable="box")
+
+    # First subplot for r_middle
+    ax3 = fig.add_subplot(132, projection="3d")
+    ax3.plot_surface(x_middle, y_middle, z_middle, cmap="plasma")
+    # ax3.plot_surface(-x_plasma, -y_plasma, z_plasma, cmap="plasma")
+    ax3.set_title("r_middle")
+    ax3.set_xlabel("X Axis")
+    ax3.set_ylabel("Y Axis")
+    ax3.set_zlabel("Z Axis")
+    ax3.set_aspect("equal", adjustable="box")
 
     # Second subplot for r_outer
     ax2 = fig.add_subplot(133, projection="3d")
@@ -377,8 +390,6 @@ def main(fname):
         plt.xlim([Rmin, Rmax])
         plt.ylim([Zmin, Zmax])
 
-    plt.tight_layout()
-
     ########################################################
     # Prepare for plotting singular vectors
     ########################################################
@@ -393,43 +404,35 @@ def main(fname):
     numCols = int(np.ceil(np.sqrt(numVectorsToPlot)))
     numRows = int(np.ceil(numVectorsToPlot * 1.0 / numCols))
 
-    numContours = 20
+    numContours = 12
 
     ########################################################
     # Plot singular vectors of the plasma-middle inductance matrix on the plasma surface
     ########################################################
 
     figureNum += 1
-    fig = plt.figure(figureNum)
-    fig.patch.set_facecolor("white")
-
+    fig, axs = plt.subplots(numRows, numCols, sharex=True, sharey=True, num=figureNum)
+    flat_axs = [x for xs in axs for x in xs]
     for whichPlot in range(numVectorsToPlot):
-        plt.subplot(numRows, numCols, whichPlot + 1)
+        plt.sca(flat_axs[whichPlot])
         data = np.reshape(
             svd_u_inductance_plasma_middle_uv[whichPlot + plotOffset, :],
             [nu_plasma, nv_plasma],
             order="F",
         )
-        plt.contourf(v_plasma, u_plasma, data, numContours)
+        plt.contourf(v_plasma, u_plasma, data, numContours, cmap="jet")
         # plt.colorbar()
         plt.xlabel("v", fontsize="x-small")
         plt.ylabel("u", fontsize="x-small")
         plt.title(
             "Singular vector U "
             + str(whichPlot + plotOffset + 1)
-            + "\ns="
-            + str(svd_s_inductance_plasma_middle[whichPlot + plotOffset]),
+            + f"\ns={svd_s_inductance_plasma_middle[whichPlot + plotOffset]:6f}",
             fontsize="x-small",
         )
 
-        plt.tight_layout()
-        ax = fig.add_axes((0, 0, 1, 1), frameon=False)
-        ax.text(
-            0.5,
-            0.99,
+        plt.suptitle(
             "Singular vectors of the plasma-to-middle surface inductance matrix. (U vectors = plasma surface)",
-            horizontalalignment="center",
-            verticalalignment="top",
             fontsize="small",
         )
 
@@ -448,7 +451,7 @@ def main(fname):
             [nu_middle, nv_middle],
             order="F",
         )
-        plt.contourf(v_middle, u_middle, data, numContours)
+        plt.contourf(v_middle, u_middle, data, numContours, cmap="jet")
         # plt.colorbar()
         plt.xlabel("v", fontsize="x-small")
         plt.ylabel("u", fontsize="x-small")
@@ -460,14 +463,8 @@ def main(fname):
             fontsize="x-small",
         )
 
-        plt.tight_layout()
-        ax = fig.add_axes((0, 0, 1, 1), frameon=False)
-        ax.text(
-            0.5,
-            0.99,
+        plt.suptitle(
             "Singular vectors of the plasma-to-middle surface inductance matrix. (V vectors = middle surface)",
-            horizontalalignment="center",
-            verticalalignment="top",
             fontsize="small",
         )
 
@@ -487,7 +484,7 @@ def main(fname):
                 [nu_plasma, nv_plasma],
                 order="F",
             )
-            plt.contourf(v_plasma, u_plasma, data, numContours)
+            plt.contourf(v_plasma, u_plasma, data, numContours, cmap="jet")
             # plt.colorbar()
             plt.xlabel("v", fontsize="x-small")
             plt.ylabel("u", fontsize="x-small")
@@ -499,16 +496,10 @@ def main(fname):
                 fontsize="x-small",
             )
 
-        plt.tight_layout()
-        ax = fig.add_axes((0, 0, 1, 1), frameon=False)
-        ax.text(
-            0.5,
-            0.99,
+        plt.suptitle(
             "Singular vectors of the transfer matrix. U vectors = plasma surface. (threshold="
             + str(pseudoinverse_thresholds[whichThreshold])
             + ")",
-            horizontalalignment="center",
-            verticalalignment="top",
             fontsize="small",
         )
 
@@ -528,7 +519,7 @@ def main(fname):
                 [nu_middle, nv_middle],
                 order="F",
             )
-            plt.contourf(v_middle, u_middle, data, numContours)
+            plt.contourf(v_middle, u_middle, data, numContours, cmap="jet")
             # plt.colorbar()
             plt.xlabel("v", fontsize="x-small")
             plt.ylabel("u", fontsize="x-small")
@@ -540,16 +531,10 @@ def main(fname):
                 fontsize="x-small",
             )
 
-        plt.tight_layout()
-        ax = fig.add_axes((0, 0, 1, 1), frameon=False)
-        ax.text(
-            0.5,
-            0.99,
+        plt.suptitle(
             "Singular vectors of the transfer matrix. V vectors = middle surface. (threshold="
             + str(pseudoinverse_thresholds[whichThreshold])
             + ")",
-            horizontalalignment="center",
-            verticalalignment="top",
             fontsize="small",
         )
 
@@ -559,19 +544,45 @@ def main(fname):
 
     # figureNum += 1
     # fig = plt.figure(figureNum)
-    # fig.patch.set_facecolor('white')
-    # ax = fig.gca(projection='3d')
-    # ax.plot_surface(r_plasma[:,:,0], r_plasma[:,:,1], r_plasma[:,:,2], rstride=1, cstride=1, color='r',linewidth=0)
-    #
-    # maxIndex = int(nvl_middle*0.7)
-    # ax.plot_surface(r_middle[:maxIndex,:,0], r_middle[:maxIndex,:,1], r_middle[:maxIndex,:,2], rstride=1, cstride=1, color='m',linewidth=0)
-    #
-    # maxIndex = int(nvl_outer*0.55)
-    # minIndex = int(nvl_outer*0.15)
-    # ax.plot_surface(r_outer[minIndex:maxIndex,:,0], r_outer[minIndex:maxIndex,:,1], r_outer[minIndex:maxIndex,:,2], rstride=1, cstride=1, color='b',linewidth=0)
-    #
+    # fig.patch.set_facecolor("white")
+    # ax = fig.gca(projection="3d")
+    # ax.plot_surface(
+    #     r_plasma[:, :, 0],
+    #     r_plasma[:, :, 1],
+    #     r_plasma[:, :, 2],
+    #     rstride=1,
+    #     cstride=1,
+    #     color="r",
+    #     linewidth=0,
+    # )
+
+    # maxIndex = int(nvl_middle * 0.7)
+    # ax.plot_surface(
+    #     r_middle[:maxIndex, :, 0],
+    #     r_middle[:maxIndex, :, 1],
+    #     r_middle[:maxIndex, :, 2],
+    #     rstride=1,
+    #     cstride=1,
+    #     color="m",
+    #     linewidth=0,
+    # )
+
+    # maxIndex = int(nvl_outer * 0.55)
+    # minIndex = int(nvl_outer * 0.15)
+    # ax.plot_surface(
+    #     r_outer[minIndex:maxIndex, :, 0],
+    #     r_outer[minIndex:maxIndex, :, 1],
+    #     r_outer[minIndex:maxIndex, :, 2],
+    #     rstride=1,
+    #     cstride=1,
+    #     color="b",
+    #     linewidth=0,
+    # )
+
     # plotLMax = r_outer.max()
-    # ax.auto_scale_xyz([-plotLMax, plotLMax], [-plotLMax, plotLMax], [-plotLMax, plotLMax])
+    # ax.auto_scale_xyz(
+    #     [-plotLMax, plotLMax], [-plotLMax, plotLMax], [-plotLMax, plotLMax]
+    # )
 
     ########################################################
     # Plot overlap of transfer matrix and inductance matrix singular vectors

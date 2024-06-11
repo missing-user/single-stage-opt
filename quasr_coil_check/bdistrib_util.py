@@ -43,8 +43,19 @@ def read_netcdf(filename: str):
             m = int(m)
             n = int(nnfp / f.variables["nfp"][()])
             surface.set_rc(m, n, f.variables["rmnc"][-1, i])
-            surface.set_zs(m, n, -f.variables["zmns"][-1, i])
 
+            if m == 0:
+                # Negative mode numbers for m=0 are a weird convention...
+                nsign = -1 if n < 0 else 1
+                surface.set_rc(m, abs(n), f.variables["rmnc"][-1, i])
+                surface.set_zs(m, abs(n), nsign * f.variables["zmns"][-1, i])
+            else:
+                surface.set_rc(m, n, f.variables["rmnc"][-1, i])
+                surface.set_zs(m, n, f.variables["zmns"][-1, i])
+
+        print("rc10", surface.get_rc(1, 0))
+        print("zs10", surface.get_zs(1, 0))
+        print("zs21", surface.get_zs(2, 1))
         return surface
 
 
@@ -63,8 +74,12 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
         f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor :]
         f.variables["zmns"][:] = -surface.zs.flatten()[surface.ntor :]
 
-        f.variables["Rmajor_p"][()] = surface.major_radius()
+        # Divided by old nfp multiplied by new nfp
+        f.variables["xn"][:] = (
+            f.variables["xn"][()] / f.variables["nfp"][()] * surface.nfp
+        )
         f.variables["nfp"][()] = surface.nfp
+        f.variables["Rmajor_p"][()] = surface.major_radius()
 
         # TODO: Net poloidal current profile (bvco), net poloidal current Amperes is computed from this
         # net_poloidal_current_Amperes = (2*pi/mu0) * (1.5*bvco(end) - 0.5*bvco(end-1));
@@ -83,16 +98,43 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
 
 def write_bdistribin(
     netcdf_filename,
-    mpol=8,
-    ntor=8,
-    sep_outer=0.1,
-    middle_surface_filename=None,
-    outer_surface_filename=None,
+    geometry_option=1,
+    geometry_info={},
+    mpol=12,
+    ntor=12,
 ):
     nu = 64
     nv = 128
 
-    sep_middle = sep_outer / 2
+    transfer_geometry = ""
+    if geometry_option == 1:
+        if "R0" in geometry_info:
+            geometry_info["R0_middle"] = geometry_info["R0"]
+            geometry_info["R0_outer"] = geometry_info["R0"]
+        transfer_geometry = f"""
+            geometry_option_middle=1
+            R0_middle = {geometry_info["R0_middle"]}
+            a_middle  = {geometry_info["a_middle"]}
+            geometry_option_outer=1
+            R0_outer = {geometry_info["R0_outer"]}
+            a_outer  = {geometry_info["a_outer"]}
+        """
+    elif geometry_option == 2:
+        if "sep_middle" not in geometry_info:
+            geometry_info["sep_middle"] = geometry_info["sep_outer"] / 2
+        transfer_geometry = f"""
+            geometry_option_middle=2
+            sep_middle={geometry_info["sep_middle"]}
+            geometry_option_outer=2
+            sep_outer={geometry_info["sep_outer"]}
+        """
+    elif geometry_option == 3:
+        transfer_geometry = f"""
+            geometry_option_middle=3
+            nescin_filename_middle='{geometry_info["nescin_filename_middle"]}'
+            geometry_option_outer=3
+            nescin_filename_outer='{geometry_info["nescin_filename_outer"]}'
+        """
 
     bdistribin = f"""&bdistrib
     transfer_matrix_option = 1
@@ -117,19 +159,14 @@ def write_bdistribin(
     geometry_option_plasma = 2
     wout_filename='{netcdf_filename}'
 
-    geometry_option_middle={2 if middle_surface_filename is None else 3}
-    separation_middle={sep_middle}
-    nescin_filename_middle='{middle_surface_filename}'
-
-    geometry_option_outer={2 if outer_surface_filename is None else 3}
-    separation_outer={sep_outer}
-    nescin_filename_outer='{outer_surface_filename}'
+    {transfer_geometry}
 
     pseudoinverse_thresholds = 1e-12
 
     n_singular_vectors_to_save = 16
   /
   """
+
     filename_out = "bdistrib_in.python_generated"
     with open(filename_out, "w") as f:
         f.write(bdistribin)
@@ -167,10 +204,17 @@ def read_nescin_file(filename: str, nfp):
         m = int(numbers[0])
         n = int(numbers[1])
         if m == 0:
-            n = abs(n)
-        surf.set_rc(m, n, float(numbers[2]))
-        surf.set_zs(m, n, float(numbers[3]))
+            # Negative mode numbers for m=0 are a weird convention...
+            nsign = -1 if n < 0 else 1
+            surf.set_rc(m, abs(n), float(numbers[2]))
+            surf.set_zs(m, abs(n), nsign * float(numbers[3]))
+        else:
+            surf.set_rc(m, n, float(numbers[2]))
+            surf.set_zs(m, n, float(numbers[3]))
 
+    print("rc10", surf.get_rc(1, 0))
+    print("zs10", surf.get_zs(1, 0))
+    print("zs21", surf.get_zs(2, 1))
     return surf
 
 
