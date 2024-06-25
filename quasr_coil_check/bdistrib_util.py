@@ -19,35 +19,66 @@ def minimum_coil_surf_distance(curves, lcfs) -> float:
     return float(min_dist)
 
 
-def rate_of_efficiency_sequence(bdistrib_path: str, plot=False) -> tuple:
+def rate_of_efficiency_sequence(
+    bdistrib_path: str, plot=False, max_index_for_fit=45
+) -> dict:
+    """max_index_for_fit is useful, because the efficiency sequence gets corrupted by numerical noise for very large indices."""
     with netcdf_file(bdistrib_path, "r", mmap=False) as f:
-        efficiency_sequence = f.variables["Bnormal_from_const_v_coils_inductance"][()]
-        efficiency_sequence = np.abs(efficiency_sequence)
-        log_efficiency_sequence = np.log(efficiency_sequence)
-        x = np.linspace(0, len(log_efficiency_sequence), len(log_efficiency_sequence))
-        fit = np.polyfit(x, log_efficiency_sequence, 1)
-        rate_of_increase = fit[0]
-        if plot:
-            # plt.semilogy(efficiency_sequence)
-            # plt.semilogy(np.exp(np.polyval(fit, x)))
-            # plt.title(str(rate_of_increase))
-            # plt.show()
-            fig = go.Figure()
+        results = {}
+        for variable_name in [
+            "Bnormal_from_1_over_R_field",
+            "Bnormal_from_1_over_R_field_inductance",
+            "Bnormal_from_1_over_R_field_transfer",
+            "Bnormal_from_const_v_coils",
+            "Bnormal_from_const_v_coils_inductance",
+            "Bnormal_from_const_v_coils_transfer",
+            "Bnormal_from_plasma_current",
+            "Bnormal_from_plasma_current_inductance",
+            "Bnormal_from_plasma_current_transfer",
+        ]:
+            efficiency_sequence = f.variables[variable_name][()]
+            efficiency_sequence = np.abs(efficiency_sequence)
+            log_efficiency_sequence = np.log(efficiency_sequence)[:max_index_for_fit]
+            x = np.linspace(
+                0, len(log_efficiency_sequence), len(log_efficiency_sequence)
+            )
+            fit = np.polyfit(x, log_efficiency_sequence, 1)
+            rate_of_increase = fit[0]
+            if plot:
+                results[variable_name] = efficiency_sequence
+                results[variable_name + " (fit)"] = np.exp(np.polyval(fit, x))
+            else:
+                results[variable_name] = rate_of_increase
+                # results[variable_name + " (dev)"] = np.std(
+                #     log_efficiency_sequence - np.polyval(fit, x)
+                # )
+        return results
+
+
+def plot_bdistrib_surfaces(bdistrib_path: str, figure=None) -> go.Figure:
+    with netcdf_file(bdistrib_path, "r", mmap=False) as f:
+        # Necessary casts to fix endianness issues between netcdf and numpy
+        r_plasma = np.ascontiguousarray(f.variables["r_plasma"][()]).astype(float)
+        r_middle = np.ascontiguousarray(f.variables["r_middle"][()]).astype(float)
+        r_outer = np.ascontiguousarray(f.variables["r_outer"][()]).astype(float)
+
+        def add_surface_trace(fig: go.Figure, r_data, name, **kwargs):
             fig.add_trace(
-                go.Scatter(
-                    y=efficiency_sequence, mode="lines", name="Efficiency Sequence"
+                go.Surface(
+                    x=r_data[r_data.shape[0] // 2 :, :, 0],
+                    y=r_data[r_data.shape[0] // 2 :, :, 1],
+                    z=r_data[r_data.shape[0] // 2 :, :, 2],
+                    name=name,
+                    **kwargs
                 )
             )
-            fit_line = np.exp(np.polyval(fit, x))
-            fig.add_trace(go.Scatter(y=fit_line, mode="lines", name="Fit Line"))
-            fig.update_layout(
-                title=str(rate_of_increase),
-                yaxis_type="log",
-                xaxis_title="Index",
-                yaxis_title="Value",
-            )
-            return fig
-        return rate_of_increase, np.std(log_efficiency_sequence - np.polyval(fit, x))
+
+        fig = figure if isinstance(figure, go.Figure) else go.Figure()
+
+        add_surface_trace(fig, r_plasma, "r_plasma", colorscale="Plasma")
+        add_surface_trace(fig, r_middle, "r_middle", colorscale="Viridis")
+        add_surface_trace(fig, r_outer, "r_outer", colorscale="Plasma")
+        return fig
 
 
 def sanitize_df_for_analysis(simsopt_loaded_list: list) -> pd.DataFrame:

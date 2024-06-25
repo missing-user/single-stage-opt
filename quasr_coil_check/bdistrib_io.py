@@ -219,6 +219,8 @@ def get_file_path(ID, type="simsopt"):
     fID = ID // 1000
     if type == "simsopt":
         return f"./QUASR_db/simsopt_serials/{fID:04}/serial{ID:07}.json"
+    elif type == "complexity":
+        return f"./QUASR_db/complexities/{fID:04}/complexity{ID:07}.json"
     elif type == "nml":
         return f"./QUASR_db/nml/{fID:04}/input{ID:07}"
     elif type == "bdistrib":
@@ -230,11 +232,13 @@ def get_file_path(ID, type="simsopt"):
 def load_simsopt_up_to(max_ID):
     objs = []
     for i in range(max_ID):
-        try:
-            obj = simsopt.load(get_file_path(i, type="simsopt"))
-            objs.append({"surfaces": obj[0], "coils": obj[1], "ID": i})
-        except:
-            pass
+        sopt_path = get_file_path(i, type="simsopt")
+        if os.path.exists(get_file_path(i, type="bdistrib")):
+            try:
+                obj = simsopt.load(sopt_path)
+                objs.append({"surfaces": obj[0], "coils": obj[1], "ID": i})
+            except:
+                pass
     return objs
 
 
