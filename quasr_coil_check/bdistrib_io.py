@@ -21,13 +21,12 @@ def read_netcdf(filename: str):
         ):
             m = int(m)
             n = int(nnfp / f.variables["nfp"][()])
-            surface.set_rc(m, n, f.variables["rmnc"][-1, i])
 
             if m == 0:
                 # Negative mode numbers for m=0 are a weird convention...
                 nsign = -1 if n < 0 else 1
                 surface.set_rc(m, abs(n), f.variables["rmnc"][-1, i])
-                surface.set_zs(m, abs(n), nsign * f.variables["zmns"][-1, i])
+                surface.set_zs(m, abs(n), f.variables["zmns"][-1, i])
             else:
                 surface.set_rc(m, n, f.variables["rmnc"][-1, i])
                 surface.set_zs(m, n, f.variables["zmns"][-1, i])
@@ -51,7 +50,7 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
         ntor = int(f.variables["ntor"][()])
         surface.change_resolution(mpol, ntor)
         f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor :]
-        f.variables["zmns"][:] = -surface.zs.flatten()[surface.ntor :]
+        f.variables["zmns"][:] = surface.zs.flatten()[surface.ntor :]
 
         # Divided by old nfp multiplied by new nfp
         f.variables["xn"][:] = (

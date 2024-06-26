@@ -146,18 +146,21 @@ def main(fname):
     fig = plt.figure(figureNum)
     fig.patch.set_facecolor("white")
 
+    major_radius = 5.5
+    paper_factor = 2 * np.pi**2 * major_radius * 1.25663706127e-6
+
     plt.plot(
-        svd_s_inductance_middle_outer,
+        svd_s_inductance_middle_outer / paper_factor,
         ".m",
         label="Inductance matrix between middle and outer surfaces",
     )
     plt.plot(
-        svd_s_inductance_plasma_outer,
+        svd_s_inductance_plasma_outer / paper_factor,
         ".r",
         label="Inductance matrix between plasma and outer surfaces",
     )
     plt.plot(
-        svd_s_inductance_plasma_middle,
+        svd_s_inductance_plasma_middle / paper_factor,
         ".g",
         label="Inductance matrix between plasma and middle surfaces",
     )
@@ -178,10 +181,45 @@ def main(fname):
         plt.plot(
             svd_s_transferMatrix[i, :], ".", color=colors[i], label="Transfer matrix"
         )
-    #    plt.plot(svd_s_transferMatrix[i,:],'.',color=colors[i],label='Transfer matrix, thresh='+str(pseudoinverse_thresholds[i]))
+    plt.plot(
+        svd_s_transferMatrix[i, :],
+        ".",
+        color=colors[i],
+        label="Transfer matrix, thresh=" + str(pseudoinverse_thresholds[i]),
+    )
     plt.legend(fontsize="x-small", loc=3)
-    plt.title("Singular values")
+    plt.title("Singular values (Fig 14.)")
+    plt.grid()
     plt.yscale("log")
+    ########################################################
+    # Fig14
+    ########################################################
+
+    figureNum += 1
+    fig = plt.figure(figureNum)
+    plt.semilogy(
+        svd_s_inductance_plasma_outer / paper_factor,
+        ".m",
+        label="Efficiency sequence",
+    )
+    plt.semilogy(
+        Bnormal_from_const_v_coils_inductance,
+        ".r",
+        label="Bnormal_from_const_v_coils_inductance",
+    )
+    plt.semilogy(
+        Bnormal_from_const_v_coils_inductance / svd_s_inductance_plasma_outer,
+        ".g",
+        label="Feasibility Sequence Outer",
+    )
+    plt.semilogy(
+        Bnormal_from_const_v_coils_inductance / svd_s_inductance_plasma_middle,
+        ".",
+        label="Feasibility Sequence Middle",
+    )
+    plt.legend(fontsize="x-small", loc=3)
+    plt.title("(Fig 14.)")
+    plt.grid()
 
     ########################################################
     # check_orthogonality plot
@@ -312,7 +350,7 @@ def main(fname):
 
     ax1 = fig.add_subplot(131, projection="3d")
     ax1.plot_surface(x_plasma, y_plasma, z_plasma, cmap="plasma")
-    ax1.set_title("r_plasma")
+    ax1.set_title("r_plasma " + str(x_plasma.shape))
     ax1.set_xlabel("X Axis")
     ax1.set_ylabel("Y Axis")
     ax1.set_zlabel("Z Axis")
