@@ -132,6 +132,7 @@ def scatterplot(dfstore, xscalar):
         "complexity",
         color="nfp",
         hover_data={"ID": True},
+        custom_data=["ID"],
     )
     return fig.update_layout(clickmode="event", height=600)
 
@@ -142,13 +143,15 @@ def scatterplot(dfstore, xscalar):
     dash.Input("scalarselect", "value"),
 )
 def display_hover_data1(hoverData, selected_scalar):
-    if not hoverData:
+    if not hoverData or not "customdata" in hoverData["points"][0]:
         return {}
 
     ID = int(hoverData["points"][0]["customdata"][0])
     results = bdistrib_util.rate_of_efficiency_sequence(
         bdistrib_io.get_file_path(ID, "bdistrib"), plot=True
     )
+    if not selected_scalar in results:
+        return {}
 
     fig = go.Figure(
         [
@@ -165,6 +168,7 @@ def display_hover_data1(hoverData, selected_scalar):
         yaxis_type="log",
         xaxis_title="Index",
         yaxis_title="Value",
+        height=600,
     )
 
     return fig
@@ -176,25 +180,26 @@ def display_hover_data1(hoverData, selected_scalar):
     dash.Input("surface_select", "value"),
 )
 def display_hover_data(hoverData, selected_surface_type):
-    if not hoverData:
+    if not hoverData or not "customdata" in hoverData["points"][0]:
         return {}
 
     result_id = int(hoverData["points"][0]["customdata"][0])
     optimization_res = simsopt.load(bdistrib_io.get_file_path(result_id))
 
-    plotting_surf = [optimization_res[0][-1]] if selected_surface_type == "lcfs" else []
-    fig = simsopt.geo.plot(
-        plotting_surf + optimization_res[1],
-        show=False,
-        engine="plotly",
-        close=True,
-    )
-    if selected_surface_type == "bdistrib surfaces":
+    fig = None
+    if selected_surface_type == "lcfs":
+        fig = simsopt.geo.plot(
+            [optimization_res[0][-1]] + optimization_res[1],
+            show=False,
+            engine="plotly",
+            close=True,
+        )
+    elif selected_surface_type == "bdistrib surfaces":
         fig = bdistrib_util.plot_bdistrib_surfaces(
             bdistrib_io.get_file_path(result_id, "bdistrib"), figure=fig
         )
 
-    return fig.update_layout(height=600, title=f"ID: {result_id}")  # type: ignore
+    return fig.update_layout(height=600, title=f"ID: {result_id}", scene=dict(aspectmode="data"))  # type: ignore
 
 
 app.run(debug=True)

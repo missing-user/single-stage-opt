@@ -62,12 +62,13 @@ def plot_bdistrib_surfaces(bdistrib_path: str, figure=None) -> go.Figure:
         r_middle = np.ascontiguousarray(f.variables["r_middle"][()]).astype(float)
         r_outer = np.ascontiguousarray(f.variables["r_outer"][()]).astype(float)
 
-        def add_surface_trace(fig: go.Figure, r_data, name, **kwargs):
+        def add_surface_trace(fig: go.Figure, r_data, fraction, name, **kwargs):
+            fraction = 1.0 - fraction
             fig.add_trace(
                 go.Surface(
-                    x=r_data[r_data.shape[0] // 2 :, :, 0],
-                    y=r_data[r_data.shape[0] // 2 :, :, 1],
-                    z=r_data[r_data.shape[0] // 2 :, :, 2],
+                    x=r_data[int(r_data.shape[0] * fraction) :, :, 0],
+                    y=r_data[int(r_data.shape[0] * fraction) :, :, 1],
+                    z=r_data[int(r_data.shape[0] * fraction) :, :, 2],
                     name=name,
                     **kwargs
                 )
@@ -75,9 +76,9 @@ def plot_bdistrib_surfaces(bdistrib_path: str, figure=None) -> go.Figure:
 
         fig = figure if isinstance(figure, go.Figure) else go.Figure()
 
-        add_surface_trace(fig, r_plasma, "r_plasma", colorscale="Plasma")
-        add_surface_trace(fig, r_middle, "r_middle", colorscale="Viridis")
-        add_surface_trace(fig, r_outer, "r_outer", colorscale="Plasma")
+        add_surface_trace(fig, r_plasma, 0.66, "r_plasma", colorscale="Plasma")
+        add_surface_trace(fig, r_middle, 0.5, "r_middle", colorscale="Viridis")
+        add_surface_trace(fig, r_outer, 0.33, "r_outer", colorscale="Plasma")
         return fig
 
 
