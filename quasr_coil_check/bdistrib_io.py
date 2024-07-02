@@ -245,6 +245,7 @@ def load_simsopt_up_to(max_ID):
 
 if __name__ == "__main__":
     import random
+    import os
 
     def compare_surfaces(s1, s2):
         assert s1.ntor == s2.ntor
@@ -277,5 +278,7 @@ if __name__ == "__main__":
     write_netcdf("unit_test.nc", surf)
     ncdfsurf2 = read_netcdf("unit_test.nc")
     assert compare_surfaces(surf, ncdfsurf2)
+    os.remove("unit_test.nc")
+    os.remove("nescin.unit_test")
 
     print("Success")
