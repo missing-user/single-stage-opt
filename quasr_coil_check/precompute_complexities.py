@@ -62,6 +62,7 @@ def compute_and_store_complexity(ID):
     return complexity
 
 
+
 def cached_get_complexity(ID):
     comppath = bdistrib_io.get_file_path(ID, "complexity")
     if os.path.exists(comppath):
@@ -81,7 +82,7 @@ if __name__ == "__main__":
         min_ID = int(sys.argv[1])
         max_ID = int(sys.argv[2])
     else:
-        print("plase supply a max ID until which to process the files.")
+        print("plase supply a (min and) max ID until which to process the files.")
 
     print("Computing complexities up to ID", max_ID)
     for i in range(min_ID, max_ID):

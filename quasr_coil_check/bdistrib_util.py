@@ -19,39 +19,54 @@ def minimum_coil_surf_distance(curves, lcfs) -> float:
     return float(min_dist)
 
 
+def fit_exponential_rate(sequence):
+    x = np.linspace(0, 1, len(sequence))
+    fit = np.polyfit(x, np.log(sequence), 1)
+    return fit
+
+
 def rate_of_efficiency_sequence(
-    bdistrib_path: str, plot=False, max_index_for_fit=45
+    bdistrib_path: str, plot=False, max_index_for_fit=150
 ) -> dict:
     """max_index_for_fit is useful, because the efficiency sequence gets corrupted by numerical noise for very large indices."""
     with netcdf_file(bdistrib_path, "r", mmap=False) as f:
         results = {}
-        for variable_name in [
-            "Bnormal_from_1_over_R_field",
-            "Bnormal_from_1_over_R_field_inductance",
-            "Bnormal_from_1_over_R_field_transfer",
-            "Bnormal_from_const_v_coils",
-            "Bnormal_from_const_v_coils_inductance",
-            "Bnormal_from_const_v_coils_transfer",
-            "Bnormal_from_plasma_current",
-            "Bnormal_from_plasma_current_inductance",
-            "Bnormal_from_plasma_current_transfer",
+        for B_key, svd_s_key in [
+            (
+                "Bnormal_from_1_over_R_field_inductance",
+                "svd_s_inductance_plasma_middle",
+            ),
+            ("Bnormal_from_1_over_R_field_inductance", "svd_s_inductance_plasma_outer"),
+            ("Bnormal_from_1_over_R_field_transfer", "svd_s_transferMatrix"),
+            # "Bnormal_from_const_v_coils",
+            # "Bnormal_from_const_v_coils_inductance",
+            # "Bnormal_from_const_v_coils_transfer",
+            # "Bnormal_from_plasma_current",
+            # "Bnormal_from_plasma_current_inductance",
+            # "Bnormal_from_plasma_current_transfer",
         ]:
-            efficiency_sequence = f.variables[variable_name][()]
-            efficiency_sequence = np.abs(efficiency_sequence)
-            log_efficiency_sequence = np.log(efficiency_sequence)[:max_index_for_fit]
-            x = np.linspace(
-                0, len(log_efficiency_sequence), len(log_efficiency_sequence)
-            )
-            fit = np.polyfit(x, log_efficiency_sequence, 1)
-            rate_of_increase = fit[0]
+            sequence = f.variables[B_key][()]
+            svd_s = f.variables[svd_s_key][()].flatten()
+            efficiency_seq = np.abs(sequence)
+            feasibility_seq = efficiency_seq / svd_s
+            eff_fit = fit_exponential_rate(efficiency_seq[:max_index_for_fit])
+            feas_fit = fit_exponential_rate(feasibility_seq[:max_index_for_fit])
+
+            eff_key = "efficiency " + svd_s_key.split("_")[-1]
+            feas_key = "feasibility " + svd_s_key.split("_")[-1]
+
             if plot:
-                results[variable_name] = efficiency_sequence
-                results[variable_name + " (fit)"] = np.exp(np.polyval(fit, x))
+                results[eff_key] = efficiency_seq
+                results[eff_key + " (fit)"] = np.exp(
+                    np.polyval(eff_fit, x=np.linspace(0, 1, max_index_for_fit))
+                )
+                results[feas_key] = feasibility_seq
+                results[feas_key + " (fit)"] = np.exp(
+                    np.polyval(feas_fit, x=np.linspace(0, 1, max_index_for_fit))
+                )
             else:
-                results[variable_name] = rate_of_increase
-                # results[variable_name + " (dev)"] = np.std(
-                #     log_efficiency_sequence - np.polyval(fit, x)
-                # )
+                results[eff_key] = eff_fit[0]
+                results[feas_key] = feas_fit[0]
         return results
 
 

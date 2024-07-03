@@ -224,6 +224,8 @@ def get_file_path(ID, type="simsopt"):
         return f"./QUASR_db/nml/{fID:04}/input{ID:07}"
     elif type == "bdistrib":
         return f"./QUASR_db/bdistrib_serials/{fID:04}/bdistrib_out.{ID:07}.nc"
+    elif type == "surfaces":
+        return f"./QUASR_db/surfaces/{fID:04}/surfaces{ID:07}.json"
     else:
         raise RuntimeError()
 
