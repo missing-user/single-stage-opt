@@ -26,7 +26,10 @@ def compute_surfaces(ID):
     lcfs = surfaces[-1].to_RZFourier()
 
     plasma_coil_distances = surfgen.coil_to_surface_distances(coils, lcfs)
-    assert (plasma_coil_distances > 0).all(), "the coils cannot be inside the plasma"
+    # assert (plasma_coil_distances > 0).all(), "the coils cannot be inside the plasma"
+    if (plasma_coil_distances > 0).all():
+        print(ID, "the coils cannot be inside the plasma")
+        return None
     target_distance = min(plasma_coil_distances)
 
     middle_surf = surfgen.surfgen(lcfs, target_distance * 0.5)
