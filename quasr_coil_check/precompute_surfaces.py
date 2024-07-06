@@ -27,8 +27,9 @@ def compute_surfaces(ID):
 
     plasma_coil_distances = surfgen.coil_to_surface_distances(coils, lcfs)
     # assert (plasma_coil_distances > 0).all(), "the coils cannot be inside the plasma"
-    if (plasma_coil_distances > 0).all():
+    if (plasma_coil_distances <= 0).any():
         print(ID, "the coils cannot be inside the plasma")
+        simsopt.geo.plot([lcfs] + coils, engine="plotly", show=True, close=True)
         return None
     target_distance = min(plasma_coil_distances)
 
