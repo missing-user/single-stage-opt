@@ -71,6 +71,51 @@ app.layout = dash.html.Div(
     **{"data-bs-theme": "dark"},
 )
 
+from skimage.filters import window
+import matplotlib.pyplot as plt
+
+
+def spectral_radius(Bn):
+    Bn = np.array(Bn)
+    # lambda x: np.sum(np.abs(np.fft.fft2(x).imag))
+    w = 1.0 - window(25, (min(Bn.shape), min(Bn.shape)))
+    center_x = (Bn.shape[0] - w.shape[0]) // 2
+    center_y = (Bn.shape[1] - w.shape[1]) // 2
+    w_padded = np.ones_like(Bn)
+    w_padded[center_x : center_x + w.shape[0], center_y : center_y + w.shape[1]] = w
+    fftImg = np.fft.fft2(Bn)
+    windowedImg = np.fft.fftshift(w_padded) * np.abs(fftImg)
+    # plt.subplot(131)
+    # plt.imshow(np.fft.fftshift(windowedImg))
+    # plt.subplot(132)
+    # plt.imshow(np.fft.fftshift(np.abs(fftImg)))
+    # plt.subplot(133)
+    # plt.imshow(np.abs(w_padded))
+    # plt.show()
+
+    return np.mean(windowedImg)
+
+
+def spectral_radius2(Bn):
+    Bn = np.array(Bn)
+    # lambda x: np.sum(np.abs(np.fft.fft2(x).imag))
+    w_padded = np.ones_like(Bn) * 0.02
+    w = window(25, (min(Bn.shape), min(Bn.shape)))
+    center_x = (Bn.shape[0] - w.shape[0]) // 2
+    center_y = (Bn.shape[1] - w.shape[1]) // 2
+    w_padded[center_x : center_x + w.shape[0], center_y : center_y + w.shape[1]] += w
+    fftImg = np.fft.fft2(Bn)
+    windowedImg = np.abs(fftImg) / np.fft.fftshift(w_padded)
+    # plt.subplot(131)
+    # plt.imshow(np.fft.fftshift(windowedImg))
+    # plt.subplot(132)
+    # plt.imshow(np.fft.fftshift(np.abs(fftImg)))
+    # plt.subplot(133)
+    # plt.imshow(np.abs(w_padded))
+    # plt.show()
+
+    return np.mean(windowedImg)
+
 
 @app.long_callback(
     dash.Output("df-store", "data"),
@@ -113,6 +158,8 @@ def load_results(set_progress, filepath):
     df["J"] = df["J"].astype(float)
     df["B target max"] = df["B_external_normal"].apply(np.max)
     df["B.n residual max"] = df["BdotN"].apply(np.max)
+    df["spectral_power_post"] = df["B_external_normal"].apply(spectral_radius)
+    df["spectral_power2_post"] = df["B_external_normal"].apply(spectral_radius2)
     df["energy"] = df["B_external_normal"].apply(
         lambda x: np.sum(np.abs(np.fft.fft2(x).imag))
     )
@@ -169,10 +216,15 @@ def display_hover_data1(hoverData, filepath):
     )
     extnorm = optimization_res["B_external_normal"]
     return (
+        # px.imshow(
+        #     optimization_res["BdotN"],
+        #     title="B.n residual",
+        #     range_color=[targetmin, targetmax],
+        # ),
         px.imshow(
-            optimization_res["BdotN"],
+            np.fft.fftshift(np.fft.fft2(optimization_res["BdotN"])).imag,
             title="B.n residual",
-            range_color=[targetmin, targetmax],
+            # range_color=[targetmin, targetmax],
         ),
         px.imshow(
             extnorm,
@@ -211,4 +263,4 @@ def display_hover_data(hoverData, filepath):
     ).update_layout(height=600, title=result_path)
 
 
-app.run(debug=True)
+app.run(debug=True, port=8052)
