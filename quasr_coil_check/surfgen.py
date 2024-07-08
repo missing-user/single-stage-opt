@@ -10,8 +10,6 @@ from simsopt._core import Optimizable
 import simsopt.objectives
 import simsopt.solve
 
-from scipy.spatial import KDTree
-
 
 class SurfaceSurfaceDistance(Optimizable):
     def __init__(
@@ -48,10 +46,14 @@ class SurfaceSurfaceDistance(Optimizable):
     return_fn_map = {"J": J, "dJ": dJ}
 
 
-def deep_copy_surf(surface: simsopt.geo.SurfaceRZFourier, fprange="field period"):
+def deep_copy_surf(
+    surface: simsopt.geo.SurfaceRZFourier,
+    fprange="field period",
+    cartesian_resolution=32,
+):
     surface_copy = simsopt.geo.SurfaceRZFourier.from_nphi_ntheta(
-        32,
-        32,
+        cartesian_resolution,
+        cartesian_resolution,
         range=fprange,
         nfp=surface.nfp,
     )
@@ -85,7 +87,7 @@ def surfgen(
         wrapping_surf,  # target_distance=target_distance
     )
     problem = simsopt.objectives.LeastSquaresProblem(
-        jnp.array([target_distance]), jnp.array([1.0]), [surf_surf_dist.J]
+        jnp.array([target_distance]), jnp.array([1.0]), [surf_surf_dist.J]  # type: ignore
     )
 
     if not iterative_constraits or iterative_constraits == 0:
@@ -97,7 +99,7 @@ def surfgen(
         #     problem, ftol=1e-5, max_nfev=50
         # )
         result = scipy.optimize.least_squares(
-            problem.residuals, problem.x.copy(), ftol=1e-5, max_nfev=50
+            problem.residuals, problem.x.copy(), ftol=1e-5, max_nfev=50  # type: ignore
         )
         problem.x = result.x
 
@@ -127,50 +129,9 @@ def coil_to_surface_distances(
     # The deep copy isn't strictly necessary, but we need to ensure that the surface
     # is over the full torus, or the signed distance check may return the wrong sign.
     plasma_coil_distances = -simsopt.geo.signed_distance_from_surface(
-        curve_xyz, deep_copy_surf(surface, "full torus")
+        curve_xyz, deep_copy_surf(surface, "full torus", 64)
     )
     return plasma_coil_distances
-
-
-def surface_between_plasma_coils(
-    curves: list[simsopt.geo.CurveRZFourier],
-    surface: simsopt.geo.SurfaceRZFourier,
-    fraction: float = 0.5,
-):
-    """Compute a SurfaceRZFourier that is placed between the plasma surface and the coils.
-    If fraction=0 it is exactly on the plasma surface, fraction=1 should become the coil winding surface.
-    """
-    surf2 = deep_copy_surf(surface)
-    wrapping_surf = deep_copy_surf(surface)
-    wrapping_surf.change_resolution(1, 1)
-    wrapping_surf.set_lower_bound("rc(0,0)", wrapping_surf.get_rc(0, 0))
-    wrapping_surf.set_lower_bound("rc(1,0)", wrapping_surf.get_rc(1, 0))
-    wrapping_surf.set_lower_bound("zs(1,0)", wrapping_surf.get_zs(1, 0))
-    surf2.fix_all()
-
-    target_distance = min(coil_to_surface_distances(curves, surface)) * fraction
-    print("target_distance: ", target_distance)
-
-    ss = SurfaceSurfaceDistance(surf2, wrapping_surf)
-    vol = simsopt.geo.Volume(
-        wrapping_surf,
-    )
-    target_volume = surf2.volume() * 16
-
-    # For minimum distance away from both surfaces
-    cs = simsopt.geo.CurveSurfaceDistance(curves, wrapping_surf, target_distance)
-    ss = SurfaceSurfaceDistance(surf2, wrapping_surf, target_distance)
-    vol = simsopt.geo.Volume(
-        wrapping_surf,
-    )
-    problem = simsopt.objectives.LeastSquaresProblem(
-        jnp.array([0, 0, target_volume]), jnp.array([1, 1, 0.1]), [cs.J, ss.J, vol.J]
-    )
-    result = scipy.optimize.least_squares(
-        problem.residuals, problem.x.copy(), ftol=1e-5, max_nfev=50
-    )
-    problem.x = result.x
-    return wrapping_surf
 
 
 if __name__ == "__main__":
