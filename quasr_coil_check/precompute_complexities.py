@@ -6,6 +6,8 @@ import simsopt.geo
 import os
 import json
 
+from skimage.filters import window
+
 from pathlib import Path
 
 
@@ -62,14 +64,43 @@ def compute_and_store_complexity(ID):
     return complexity
 
 
+def spectral_power(Bn: np.ndarray):
+    Bn = np.array(Bn)
+    w = 1.0 - window(25, (min(Bn.shape), min(Bn.shape)))
+    center_x = (Bn.shape[0] - w.shape[0]) // 2
+    center_y = (Bn.shape[1] - w.shape[1]) // 2
+    w_padded = np.ones_like(Bn)
+    w_padded[center_x : center_x + w.shape[0], center_y : center_y + w.shape[1]] = w
+    fftImg = np.fft.fft2(Bn)
+    windowedImg = np.fft.fftshift(w_padded) * np.abs(fftImg)
+
+    return np.mean(windowedImg)
+
+
+def possibly_add_spectral_power(complexity_dict: dict, ID, comppath):
+    if "spectral_power" not in complexity_dict:
+        spath = bdistrib_io.get_file_path(ID, "surfaces")
+        if os.path.exists(spath):
+            j_surfaces = simsopt.load(spath)
+            complexity_dict["spectral_power"] = spectral_power(j_surfaces["BdotN"])
+            with open(comppath, "w") as f:
+                json.dump(complexity_dict, f)
+        else:
+            print(ID, "has no associated surfaces")
+    return complexity_dict
+
 
 def cached_get_complexity(ID):
     comppath = bdistrib_io.get_file_path(ID, "complexity")
     if os.path.exists(comppath):
         with open(bdistrib_io.get_file_path(ID, "complexity")) as f:
-            return json.load(f)
+            j_complexity = json.load(f)
+        possibly_add_spectral_power(j_complexity, ID, comppath)
     else:
-        return compute_and_store_complexity(ID)
+        j_complexity = compute_and_store_complexity(ID)
+        possibly_add_spectral_power(j_complexity, ID, comppath)
+
+    return j_complexity
 
 
 if __name__ == "__main__":

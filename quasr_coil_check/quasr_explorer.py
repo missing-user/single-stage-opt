@@ -34,15 +34,21 @@ app.layout = dash.html.Div(
                 dbc.Col(
                     [
                         dash.dcc.Slider(0, 1150000, value=1092000, id="max_ID"),
-                        dash.dcc.Dropdown(id="scalarselect"),
+                        dash.dcc.Dropdown(id="x-axis-select"),
+                        dash.dcc.Dropdown(id="y-axis-select", value="complexity"),
                     ]
                 ),
                 dbc.Col(
                     [
                         dash.dcc.Dropdown(
-                            id="surface_select",
-                            options=["lcfs", "bdistrib surfaces"],
-                            value="lcfs",
+                            id="matrix_select",
+                            options=["inductance", "transfer"],
+                            value="inductance",
+                        ),
+                        dash.dcc.Dropdown(
+                            id="sequence_select",
+                            options=["efficiency", "feasibility"],
+                            value="efficiency",
                         ),
                     ]
                 ),
@@ -61,7 +67,16 @@ app.layout = dash.html.Div(
         ),
         dbc.Row(
             [
-                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="hover_fig", figure={}))),
+                dbc.Col(
+                    [
+                        dash.dcc.Dropdown(
+                            id="surface_select",
+                            options=["lcfs", "bdistrib surfaces"],
+                            value="lcfs",
+                        ),
+                        dash.dcc.Loading(dash.dcc.Graph(id="hover_fig", figure={})),
+                    ]
+                ),
             ]
         ),
         dash.dcc.Store(id="df-store"),
@@ -112,24 +127,30 @@ def load_results(set_progress, max_ID):
     return df.to_dict("records")
 
 
-@app.callback(dash.Output("scalarselect", "options"), dash.Input("df-store", "data"))
+@app.callback(
+    dash.Output("x-axis-select", "options"),
+    dash.Output("y-axis-select", "options"),
+    dash.Input("df-store", "data"),
+)
 def dropdown(dfstore):
     df = pd.DataFrame(dfstore).convert_dtypes()
-    return df.select_dtypes(include=["number"]).columns.tolist()
+    axis_options = df.select_dtypes(include=["number"]).columns.tolist()
+    return axis_options, axis_options
 
 
 @app.callback(
     dash.Output("figure1", "figure"),
     dash.Input("df-store", "data"),
-    dash.Input("scalarselect", "value"),
+    dash.Input("x-axis-select", "value"),
+    dash.Input("y-axis-select", "value"),
 )
-def scatterplot(dfstore, xscalar):
+def scatterplot(dfstore, xscalar, yscalar):
     df = pd.DataFrame(dfstore).convert_dtypes()
     df["nfp"] = df["nfp"].astype(str)
     fig = px.scatter(
         df,
         xscalar,
-        "complexity",
+        yscalar,
         color="nfp",
         hover_data={"ID": True},
         custom_data=["ID"],
@@ -140,37 +161,46 @@ def scatterplot(dfstore, xscalar):
 @app.callback(
     dash.Output("efficiency_sequence", "figure"),
     dash.Input("figure1", "hoverData"),
-    dash.Input("scalarselect", "value"),
+    dash.Input("matrix_select", "value"),
+    dash.Input("sequence_select", "value"),
 )
-def display_hover_data1(hoverData, selected_scalar):
+def display_hover_data1(hoverData, selected_matrix, selected_sequence):
     if not hoverData or not "customdata" in hoverData["points"][0]:
         return {}
 
     ID = int(hoverData["points"][0]["customdata"][0])
+
     results = bdistrib_util.rate_of_efficiency_sequence(
         bdistrib_io.get_file_path(ID, "bdistrib"), plot=True
     )
-    if not selected_scalar in results:
-        return {}
+    # Convert the results dictionary into a DataFrame
+    data = []
+    for key, values in results.items():
+        for i, value in enumerate(values):
+            data.append(
+                {
+                    "Index": i,
+                    "Value": value,
+                    "Trace": key.replace(" (fit)", ""),
+                    "Type": "Fit" if "(fit)" in key else "Raw",
+                }
+            )
 
-    fig = go.Figure(
-        [
-            go.Scatter(
-                y=results[selected_scalar], mode="lines", name="Efficiency Sequence"
-            ),
-            go.Scatter(
-                y=results[selected_scalar + " (fit)"], mode="lines", name="Fit Line"
-            ),
-        ]
-    )
-    fig.update_layout(
-        # title=str(rate_of_increase),
-        yaxis_type="log",
-        xaxis_title="Index",
-        yaxis_title="Value",
+    df = pd.DataFrame(data)
+
+    # Filter the DataFrame to include only rows where the selected_sequence is in the Trace
+    filtered_df = df[df["Trace"].str.contains(selected_sequence)]
+
+    # Create the plot using Plotly Express
+    fig = px.line(
+        filtered_df,
+        x="Index",
+        y="Value",
+        log_y=True,
+        color="Trace",
+        line_dash="Type",
         height=600,
     )
-
     return fig
 
 
@@ -202,4 +232,4 @@ def display_hover_data(hoverData, selected_surface_type):
     return fig.update_layout(height=600, title=f"ID: {result_id}", scene=dict(aspectmode="data"))  # type: ignore
 
 
-app.run(debug=True)
+app.run(debug=True, port="8051")
