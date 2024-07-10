@@ -90,28 +90,28 @@ def write_bdistribin(
             geometry_info["R0_middle"] = geometry_info["R0"]
             geometry_info["R0_outer"] = geometry_info["R0"]
         transfer_geometry = f"""
-            geometry_option_middle=1
-            R0_middle = {geometry_info["R0_middle"]}
-            a_middle  = {geometry_info["a_middle"]}
-            geometry_option_outer=1
-            R0_outer = {geometry_info["R0_outer"]}
-            a_outer  = {geometry_info["a_outer"]}
+    geometry_option_middle=1
+    R0_middle = {geometry_info["R0_middle"]}
+    a_middle  = {geometry_info["a_middle"]}
+    geometry_option_outer=1
+    R0_outer = {geometry_info["R0_outer"]}
+    a_outer  = {geometry_info["a_outer"]}
         """
     elif geometry_option == 2:
         if "sep_middle" not in geometry_info:
             geometry_info["sep_middle"] = geometry_info["sep_outer"] / 2
         transfer_geometry = f"""
-            geometry_option_middle=2
-            sep_middle={geometry_info["sep_middle"]}
-            geometry_option_outer=2
-            sep_outer={geometry_info["sep_outer"]}
+    geometry_option_middle=2
+    sep_middle={geometry_info["sep_middle"]}
+    geometry_option_outer=2
+    sep_outer={geometry_info["sep_outer"]}
         """
     elif geometry_option == 3:
         transfer_geometry = f"""
-            geometry_option_middle=3
-            nescin_filename_middle='{geometry_info["nescin_filename_middle"]}'
-            geometry_option_outer=3
-            nescin_filename_outer='{geometry_info["nescin_filename_outer"]}'
+    geometry_option_middle=3
+    nescin_filename_middle='{geometry_info["nescin_filename_middle"]}'
+    geometry_option_outer=3
+    nescin_filename_outer='{geometry_info["nescin_filename_outer"]}'
         """
 
     bdistribin = f"""&bdistrib
