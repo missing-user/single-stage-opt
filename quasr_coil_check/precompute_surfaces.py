@@ -75,6 +75,16 @@ def compute_and_store_surfaces(ID):
 
 
 def cached_get_surfaces(ID) -> dict:
+    """Returns a dict with the plasma surface, optimized middle surface, optimized winding surface and some meta information.
+    Example:
+    {
+        "lcfs": lcfs,
+        "middle_surf": middle_surf,
+        "coil_surf": coil_surf,
+        "B": B,
+        "BdotN": BdotN,
+    }
+    """
     comppath = bdistrib_io.get_file_path(ID, "surfaces")
     if os.path.exists(comppath):
         print(ID, "(cached)")

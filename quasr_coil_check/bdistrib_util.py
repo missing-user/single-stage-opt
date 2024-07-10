@@ -70,8 +70,8 @@ def rate_of_efficiency_sequence(
         return results
 
 
-def plot_bdistrib_surfaces(bdistrib_path: str, figure=None) -> go.Figure:
-    with netcdf_file(bdistrib_path, "r", mmap=False) as f:
+def plot_bdistrib_surfaces(bdistrib_output_path: str, figure=None) -> go.Figure:
+    with netcdf_file(bdistrib_output_path, "r", mmap=False) as f:
         # Necessary casts to fix endianness issues between netcdf and numpy
         r_plasma = np.ascontiguousarray(f.variables["r_plasma"][()]).astype(float)
         r_middle = np.ascontiguousarray(f.variables["r_middle"][()]).astype(float)
