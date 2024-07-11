@@ -104,6 +104,8 @@ def load_results(set_progress, max_ID):
     set_progress(("1", str(2 * max_ID)))
     # simsopt_objs = bdistrib_io.load_simsopt_up_to(max_ID)
     set_progress(("2", "5"))
+    unpickled_df = pd.read_pickle("QUASR_db/QA_database_26032024.pkl")
+
     # df = bdistrib_util.sanitize_df_for_analysis(simsopt_objs)
     set_progress(("3", "5"))
 
@@ -122,8 +124,15 @@ def load_results(set_progress, max_ID):
         set_progress((str(max_ID + ID), str(2 * max_ID)))
         return precompute_complexities.cached_get_complexity(ID)
 
-    complexity = [get_complexity(ID) for ID in df["ID"]]
-    df = df.join(pd.DataFrame(complexity)).select_dtypes(exclude=["object"])
+    # complexity = [get_complexity(ID) for ID in df["ID"]]
+    # df = df.join(pd.DataFrame(complexity)).select_dtypes(exclude=["object"])
+    unpickled_df["complexity"] = unpickled_df["max_kappa"] + unpickled_df["max_msc"]
+    unpickled_df["log(qs error)"] = np.log(unpickled_df["qs_error"])
+
+    df = df.join(unpickled_df, on="ID", rsuffix="database").select_dtypes(
+        exclude=["object"]
+    )
+
     return df.to_dict("records")
 
 
