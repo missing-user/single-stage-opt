@@ -80,7 +80,7 @@ def spectral_power(Bn: np.ndarray):
 def possibly_add_spectral_power(complexity_dict: dict, ID, comppath):
     if "spectral_power" not in complexity_dict:
         spath = bdistrib_io.get_file_path(ID, "surfaces")
-        if os.path.exists(spath):
+        if Path().exists():
             j_surfaces = simsopt.load(spath)
             complexity_dict["spectral_power"] = spectral_power(j_surfaces["BdotN"])
             with open(comppath, "w") as f:
@@ -92,7 +92,7 @@ def possibly_add_spectral_power(complexity_dict: dict, ID, comppath):
 
 def cached_get_complexity(ID):
     comppath = bdistrib_io.get_file_path(ID, "complexity")
-    if os.path.exists(comppath):
+    if Path(comppath).exists():
         with open(bdistrib_io.get_file_path(ID, "complexity")) as f:
             j_complexity = json.load(f)
         possibly_add_spectral_power(j_complexity, ID, comppath)

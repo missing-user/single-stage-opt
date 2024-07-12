@@ -9,7 +9,6 @@ import json
 from pathlib import Path
 import surfgen
 
-
 def compute_B(coils, surface) -> np.ndarray:
     bs = simsopt.field.BiotSavart(coils)
     bs.set_points(surface.gamma().reshape((-1, 3)))
@@ -86,7 +85,7 @@ def cached_get_surfaces(ID) -> dict:
     }
     """
     comppath = bdistrib_io.get_file_path(ID, "surfaces")
-    if os.path.exists(comppath):
+    if Path(comppath).exists():
         print(ID, "(cached)")
         return simsopt.load(bdistrib_io.get_file_path(ID, "surfaces"))
     else:

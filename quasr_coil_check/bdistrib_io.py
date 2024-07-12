@@ -216,7 +216,7 @@ def write_nescin_file(filename: str, surface: simsopt.geo.SurfaceRZFourier):
 
 def get_file_path(ID, type="simsopt"):
     """Returns the relative file paths into the QUASR db folder structure for one of then following file types:
-    [simsopt, complexity, nml, bdistrib, surfaces]"""
+    [simsopt, complexity, nml, bdistrib, regcoil, surfaces]"""
     fID = ID // 1000
     if type == "simsopt":
         return f"./QUASR_db/simsopt_serials/{fID:04}/serial{ID:07}.json"
@@ -226,6 +226,8 @@ def get_file_path(ID, type="simsopt"):
         return f"./QUASR_db/nml/{fID:04}/input{ID:07}"
     elif type == "bdistrib":
         return f"./QUASR_db/bdistrib_serials/{fID:04}/bdistrib_out.{ID:07}.nc"
+    elif type == "regcoil":
+        return f"./QUASR_db/regcoil/{fID:04}/regcoil_out.{ID:07}.nc"
     elif type == "surfaces":
         return f"./QUASR_db/surfaces/{fID:04}/surfaces{ID:07}.json"
     else:

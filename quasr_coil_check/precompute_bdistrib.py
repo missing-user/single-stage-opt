@@ -2,6 +2,7 @@ import simsopt
 import simsopt.geo
 import simsopt.field
 import os
+from pathlib import Path
 
 import bdistrib_io
 import subprocess
@@ -50,17 +51,14 @@ if __name__ == "__main__":
 
     print("Computing surfaces up to ID", max_ID)
     for i in range(min_ID, max_ID):
-        if os.path.exists(bdistrib_io.get_file_path(i, "simsopt")):
+        if Path(bdistrib_io.get_file_path(i, "simsopt")).exists():
             surfaces = precompute_surfaces.cached_get_surfaces(i)
 
             bdistrib_out_path = bdistrib_io.get_file_path(i, "bdistrib")
-            subprocess.check_call(["mkdir", "-p", os.path.dirname(bdistrib_out_path)])
+            Path(bdistrib_out_path).parent.mkdir(parents=True, exist_ok=True)
             bdistrib_for_surfaces(
                 surfaces["lcfs"], surfaces["middle_surf"], surfaces["coil_surf"]
             )
-            # Move results to correct directory
-            subprocess.check_call(
-                ["mv", "bdistrib_out.python_generated.nc", bdistrib_out_path, "-u"]
-            )
+            Path("bdistrib_out.python_generated.nc").rename(bdistrib_out_path)
         else:
             print("Skipping", i)
