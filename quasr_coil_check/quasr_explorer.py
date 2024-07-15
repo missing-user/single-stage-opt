@@ -129,11 +129,9 @@ def load_results(set_progress, max_ID):
     unpickled_df["complexity"] = unpickled_df["max_kappa"] + unpickled_df["max_msc"]
     unpickled_df["log(qs error)"] = np.log(unpickled_df["qs_error"])
 
-    df = df.join(unpickled_df, on="ID", rsuffix="database").select_dtypes(
-        exclude=["object"]
-    )
+    df = df.merge(unpickled_df, left_on="ID", right_on="ID")
 
-    return df.to_dict("records")
+    return df.select_dtypes(exclude=["object"]).to_dict("records")
 
 
 @app.callback(
