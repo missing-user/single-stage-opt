@@ -57,6 +57,32 @@ def compute_and_save(ID: int):
         Path(REGCOIL_OUT_TMP_PATH).rename(comppath)
 
 
+def get_regcoil_metrics(ID):
+    from scipy.io import netcdf_file
+    import numpy as np
+
+    with netcdf_file(bdistrib_io.get_file_path(ID, "regcoil"), "r", mmap=False) as f:
+        regcoil_results = {}
+        for key in [
+            "lambda",
+            "chi2_B",
+            "chi2_K",
+            "chi2_Laplace_Beltrami",
+            "max_Bnormal",
+            "max_K",
+        ]:
+            metric_for_different_lambda = f.variables[key][()]
+            regcoil_results[key] = metric_for_different_lambda
+            regcoil_results[key + "[-1]"] = metric_for_different_lambda[-1]
+            regcoil_results[key + " (linear fit)"] = np.polyfit(
+                metric_for_different_lambda,
+                np.linspace(0, 1, len(metric_for_different_lambda)),
+                1,
+            )[0]
+        regcoil_results["ID"] = ID
+    return regcoil_results
+
+
 if __name__ == "__main__":
     import sys
 

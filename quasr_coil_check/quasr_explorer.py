@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import os
 import precompute_complexities
+import precompute_regcoil
 
 import bdistrib_util
 import bdistrib_io
@@ -33,20 +34,28 @@ app.layout = dash.html.Div(
             [
                 dbc.Col(
                     [
-                        dash.dcc.Slider(0, 1150000, value=1092000, id="max_ID"),
+                        dash.dcc.Input(
+                            1150000,
+                            type="number",
+                            id="num-dataset-input",
+                            persistence=True,
+                        ),
                         dash.dcc.Dropdown(id="x-axis-select"),
                         dash.dcc.Dropdown(id="y-axis-select", value="complexity"),
+                        dash.dcc.Checklist(
+                            ["xlog", "ylog"], [], inline=True, id="log-axis-select"
+                        ),
                     ]
                 ),
                 dbc.Col(
                     [
                         dash.dcc.Dropdown(
-                            id="matrix_select",
+                            id="bdistrib-matrix-dropdown",
                             options=["inductance", "transfer"],
                             value="inductance",
                         ),
                         dash.dcc.Dropdown(
-                            id="sequence_select",
+                            id="sequence-dropdown",
                             options=["efficiency", "feasibility"],
                             value="efficiency",
                         ),
@@ -54,27 +63,36 @@ app.layout = dash.html.Div(
                 ),
             ]
         ),
-        dbc.Row(dash.html.Progress(id="progress_bar")),
+        dbc.Row(dash.html.Progress(id="progress-bar")),
         dbc.Row(
             [
-                dbc.Col(dash.dcc.Loading(dash.dcc.Graph(id="figure1", figure={}))),
                 dbc.Col(
                     dash.dcc.Loading(
-                        dash.dcc.Graph(id="efficiency_sequence", figure={})
+                        dash.dcc.Graph(id="metric-scatter-plot", figure={})
                     )
+                ),
+                dbc.Col(
+                    dash.dcc.Loading(dash.dcc.Graph(id="correlation_plot", figure={}))
                 ),
             ]
         ),
         dbc.Row(
             [
                 dbc.Col(
+                    dash.dcc.Loading(
+                        dash.dcc.Graph(id="efficiency-sequence-plot", figure={})
+                    )
+                ),
+                dbc.Col(
                     [
                         dash.dcc.Dropdown(
-                            id="surface_select",
+                            id="plasma-surface-dropdown",
                             options=["lcfs", "bdistrib surfaces"],
                             value="lcfs",
                         ),
-                        dash.dcc.Loading(dash.dcc.Graph(id="hover_fig", figure={})),
+                        dash.dcc.Loading(
+                            dash.dcc.Graph(id="plasma-surface-plot", figure={})
+                        ),
                     ]
                 ),
             ]
@@ -87,16 +105,16 @@ app.layout = dash.html.Div(
 
 @app.long_callback(
     dash.Output("df-store", "data"),
-    dash.Input("max_ID", "value"),
+    dash.Input("num-dataset-input", "value"),
     running=[
         (
-            dash.Output("progress_bar", "style"),
+            dash.Output("progress-bar", "style"),
             {"visibility": "visible"},
             {"visibility": "hidden"},
         )
     ],
     manager=long_callback_manager,
-    progress=[dash.Output("progress_bar", "value"), dash.Output("progress_bar", "max")],
+    progress=[dash.Output("progress-bar", "value"), dash.Output("progress-bar", "max")],
 )
 def load_results(set_progress, max_ID):
     max_ID = int(max_ID)
@@ -124,12 +142,18 @@ def load_results(set_progress, max_ID):
         set_progress((str(max_ID + ID), str(2 * max_ID)))
         return precompute_complexities.cached_get_complexity(ID)
 
-    # complexity = [get_complexity(ID) for ID in df["ID"]]
-    # df = df.join(pd.DataFrame(complexity)).select_dtypes(exclude=["object"])
+    complexity = [get_complexity(ID) for ID in df["ID"]]
+    df = df.merge(pd.DataFrame(complexity), left_on="ID", right_on="ID")
+
     unpickled_df["complexity"] = unpickled_df["max_kappa"] + unpickled_df["max_msc"]
     unpickled_df["log(qs error)"] = np.log(unpickled_df["qs_error"])
-
     df = df.merge(unpickled_df, left_on="ID", right_on="ID")
+
+    df = df.merge(
+        pd.DataFrame([precompute_regcoil.get_regcoil_metrics(ID) for ID in df["ID"]]),
+        left_on="ID",
+        right_on="ID",
+    ).infer_objects()
 
     return df.select_dtypes(exclude=["object"]).to_dict("records")
 
@@ -146,12 +170,13 @@ def dropdown(dfstore):
 
 
 @app.callback(
-    dash.Output("figure1", "figure"),
+    dash.Output("metric-scatter-plot", "figure"),
     dash.Input("df-store", "data"),
     dash.Input("x-axis-select", "value"),
     dash.Input("y-axis-select", "value"),
+    dash.Input("log-axis-select", "value"),
 )
-def scatterplot(dfstore, xscalar, yscalar):
+def scatterplot(dfstore, xscalar, yscalar, logatirhmic):
     df = pd.DataFrame(dfstore).convert_dtypes()
     df["nfp"] = df["nfp"].astype(str)
     fig = px.scatter(
@@ -159,6 +184,8 @@ def scatterplot(dfstore, xscalar, yscalar):
         xscalar,
         yscalar,
         color="nfp",
+        log_x="xlog" in logatirhmic,
+        log_y="ylog" in logatirhmic,
         hover_data={"ID": True},
         custom_data=["ID"],
     )
@@ -166,10 +193,10 @@ def scatterplot(dfstore, xscalar, yscalar):
 
 
 @app.callback(
-    dash.Output("efficiency_sequence", "figure"),
-    dash.Input("figure1", "hoverData"),
-    dash.Input("matrix_select", "value"),
-    dash.Input("sequence_select", "value"),
+    dash.Output("efficiency-sequence-plot", "figure"),
+    dash.Input("metric-scatter-plot", "hoverData"),
+    dash.Input("bdistrib-matrix-dropdown", "value"),
+    dash.Input("sequence-dropdown", "value"),
 )
 def display_hover_data1(hoverData, selected_matrix, selected_sequence):
     if not hoverData or not "customdata" in hoverData["points"][0]:
@@ -212,9 +239,9 @@ def display_hover_data1(hoverData, selected_matrix, selected_sequence):
 
 
 @app.callback(
-    dash.Output("hover_fig", "figure"),
-    dash.Input("figure1", "clickData"),
-    dash.Input("surface_select", "value"),
+    dash.Output("plasma-surface-plot", "figure"),
+    dash.Input("metric-scatter-plot", "clickData"),
+    dash.Input("plasma-surface-dropdown", "value"),
 )
 def display_hover_data(hoverData, selected_surface_type):
     if not hoverData or not "customdata" in hoverData["points"][0]:

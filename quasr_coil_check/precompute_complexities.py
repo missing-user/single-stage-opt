@@ -99,7 +99,7 @@ def cached_get_complexity(ID):
     else:
         j_complexity = compute_and_store_complexity(ID)
         possibly_add_spectral_power(j_complexity, ID, comppath)
-
+    j_complexity["ID"] = ID
     return j_complexity
 
 
