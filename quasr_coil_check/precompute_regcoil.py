@@ -16,22 +16,20 @@ def run_regcoil(
     plasma_path = "wout_surfaces_python_generated.nc"
     winding_path = "nescin.winding_surface"
     if isinstance(plasma_surface, simsopt.geo.Surface):
-        bdistrib_io.write_netcdf(
-            "wout_surfaces_python_generated.nc", plasma_surface.to_RZFourier()
-        )
+        bdistrib_io.write_netcdf(plasma_path, plasma_surface.to_RZFourier())
     elif isinstance(plasma_surface, str):
         plasma_path = plasma_surface
 
     if isinstance(winding_surface, simsopt.geo.Surface):
-        bdistrib_io.write_nescin_file(
-            "nescin.winding_surface", winding_surface.to_RZFourier()
-        )
+        bdistrib_io.write_nescin_file(winding_path, winding_surface.to_RZFourier())
     elif isinstance(winding_surface, str):
         winding_path = winding_surface
 
     input_string = f"""&regcoil_nml
-  general_option = 1
-  ! nlambda = 20
+  general_option = 5 ! Check if target is attainable first
+  Nlambda = 16
+  target_option = "rms_Bnormal"
+  target_value = 0.05 ! Arbitrarily chosen based on 3 randomly selected configurations. Will need tweaking
 
   geometry_option_plasma = 2
   wout_filename='./{plasma_path}'
@@ -49,12 +47,17 @@ def run_regcoil(
 
 def compute_and_save(ID: int):
     res = precompute_surfaces.cached_get_surfaces(ID)
-    exit_code = run_regcoil(res["lcfs"], res["middle_surf"])
-    # exit_code = run_regcoil(res["lcfs"], res["coil_surf"])
+    # exit_code = run_regcoil(res["lcfs"], res["middle_surf"])
+    if res is None:
+        print("Invalid surface for file for ID=", ID)
+        return 1
+    exit_code = run_regcoil(res["lcfs"], res["coil_surf"])
     if exit_code == 0:
         comppath = bdistrib_io.get_file_path(ID, "regcoil")
         Path(comppath).parent.mkdir(parents=True, exist_ok=True)
         Path(REGCOIL_OUT_TMP_PATH).rename(comppath)
+        return exit_code
+    return exit_code
 
 
 def get_regcoil_metrics(ID):
