@@ -40,10 +40,21 @@ app.layout = dash.html.Div(
                             id="num-dataset-input",
                             persistence=True,
                         ),
-                        dash.dcc.Dropdown(id="x-axis-select"),
-                        dash.dcc.Dropdown(id="y-axis-select", value="complexity"),
+                        dash.dcc.Dropdown(
+                            id="x-axis-select",
+                            persistence=True,
+                        ),
+                        dash.dcc.Dropdown(
+                            id="y-axis-select",
+                            multi=True,
+                            persistence=True,
+                        ),
                         dash.dcc.Checklist(
-                            ["xlog", "ylog"], [], inline=True, id="log-axis-select"
+                            ["xlog", "ylog"],
+                            [],
+                            inline=True,
+                            id="log-axis-select",
+                            persistence=True,
                         ),
                     ]
                 ),
@@ -53,11 +64,13 @@ app.layout = dash.html.Div(
                             id="bdistrib-matrix-dropdown",
                             options=["inductance", "transfer"],
                             value="inductance",
+                            persistence=True,
                         ),
                         dash.dcc.Dropdown(
                             id="sequence-dropdown",
                             options=["efficiency", "feasibility"],
                             value="efficiency",
+                            persistence=True,
                         ),
                     ]
                 ),
@@ -72,7 +85,7 @@ app.layout = dash.html.Div(
                     )
                 ),
                 dbc.Col(
-                    dash.dcc.Loading(dash.dcc.Graph(id="correlation_plot", figure={}))
+                    dash.dcc.Loading(dash.dcc.Graph(id="correlation-plot", figure={}))
                 ),
             ]
         ),
@@ -122,7 +135,9 @@ def load_results(set_progress, max_ID):
     set_progress(("1", str(2 * max_ID)))
     # simsopt_objs = bdistrib_io.load_simsopt_up_to(max_ID)
     set_progress(("2", "5"))
-    unpickled_df = pd.read_pickle("QUASR_db/QA_database_26032024.pkl")
+    df: pd.DataFrame = pd.read_pickle("QUASR_db/QA_database_26032024.pkl")
+    df["complexity"] = df["max_kappa"] + df["max_msc"]
+    df["log(qs error)"] = np.log(df["qs_error"])
 
     # df = bdistrib_util.sanitize_df_for_analysis(simsopt_objs)
     set_progress(("3", "5"))
@@ -135,19 +150,17 @@ def load_results(set_progress, max_ID):
             results_dict["ID"] = ID
             efficiencies.append(results_dict)
             set_progress((str(ID), str(2 * max_ID)))
-    df = pd.DataFrame(efficiencies)
+    df = df.merge(pd.DataFrame(efficiencies), left_on="ID", right_on="ID")
 
     # Compute coil complexity from coils
     def get_complexity(ID):
         set_progress((str(max_ID + ID), str(2 * max_ID)))
-        return precompute_complexities.cached_get_complexity(ID)
+        compl = precompute_complexities.cached_get_complexity(ID)
+        compl.pop("nfp", None)
+        return compl
 
-    complexity = [get_complexity(ID) for ID in df["ID"]]
-    df = df.merge(pd.DataFrame(complexity), left_on="ID", right_on="ID")
-
-    unpickled_df["complexity"] = unpickled_df["max_kappa"] + unpickled_df["max_msc"]
-    unpickled_df["log(qs error)"] = np.log(unpickled_df["qs_error"])
-    df = df.merge(unpickled_df, left_on="ID", right_on="ID")
+    # complexity = [get_complexity(ID) for ID in df["ID"]]
+    # df = df.merge(pd.DataFrame(complexity), left_on="ID", right_on="ID")
 
     df = df.merge(
         pd.DataFrame([precompute_regcoil.get_regcoil_metrics(ID) for ID in df["ID"]]),
@@ -169,6 +182,21 @@ def dropdown(dfstore):
     return axis_options, axis_options
 
 
+@app.callback(dash.Output("correlation-plot", "figure"), dash.Input("df-store", "data"))
+def correlationplot(dfstore):
+    df = pd.DataFrame(dfstore).convert_dtypes()
+    return px.imshow(df.corr(), height=600)
+
+
+@app.callback(
+    dash.Output("x-axis-select", "value"),
+    dash.Output("y-axis-select", "value"),
+    dash.Input("correlation-plot", "clickData"),
+)
+def select_correlation(clickdata):
+    return clickdata["points"][0]["x"], clickdata["points"][0]["y"]
+
+
 @app.callback(
     dash.Output("metric-scatter-plot", "figure"),
     dash.Input("df-store", "data"),
@@ -179,16 +207,25 @@ def dropdown(dfstore):
 def scatterplot(dfstore, xscalar, yscalar, logatirhmic):
     df = pd.DataFrame(dfstore).convert_dtypes()
     df["nfp"] = df["nfp"].astype(str)
-    fig = px.scatter(
-        df,
-        xscalar,
-        yscalar,
-        color="nfp",
-        log_x="xlog" in logatirhmic,
-        log_y="ylog" in logatirhmic,
-        hover_data={"ID": True},
-        custom_data=["ID"],
-    )
+    if len(yscalar) == 1:
+        yscalar = yscalar[0]
+        fig = px.scatter(
+            df,
+            xscalar,
+            yscalar,
+            color="nfp",
+            log_x="xlog" in logatirhmic,
+            log_y="ylog" in logatirhmic,
+            hover_data={"ID": True},
+            custom_data=["ID"],
+        )
+    else:
+        fig = px.scatter_matrix(
+            data_frame=df,
+            dimensions=yscalar,
+            color="nfp",
+            hover_data={"ID": True},
+        ).update_traces(diagonal_visible=True, showupperhalf=False)
     return fig.update_layout(clickmode="event", height=600)
 
 

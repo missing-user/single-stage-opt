@@ -102,6 +102,5 @@ def sanitize_df_for_analysis(simsopt_loaded_list: list) -> pd.DataFrame:
     df["lcfs"] = df["surfaces"].map(lambda x: x[-1])
     df["AR"] = df["lcfs"].map(lambda x: x.aspect_ratio())
     df["volume"] = df["lcfs"].map(lambda x: -x.volume())
-    df["nfp"] = df["lcfs"].map(lambda x: int(x.nfp))
     df["R1"] = df["lcfs"].map(lambda x: x.minor_radius())
     return df
