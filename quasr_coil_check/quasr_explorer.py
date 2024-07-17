@@ -194,7 +194,7 @@ def correlationplot(dfstore):
     dash.Input("correlation-plot", "clickData"),
 )
 def select_correlation(clickdata):
-    return clickdata["points"][0]["x"], clickdata["points"][0]["y"]
+    return clickdata["points"][0]["x"], [p["y"] for p in clickdata["points"]]
 
 
 @app.callback(
