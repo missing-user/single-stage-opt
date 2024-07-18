@@ -301,7 +301,7 @@ def display_hover_data(hover_data, selected_surface_type):
     result_id = int(hover_data["points"][0]["customdata"][0])
     optimization_res = simsopt.load(bdistrib_io.get_file_path(result_id))
 
-    fig = None
+    fig: go.Figure | None = None
     if selected_surface_type == "lcfs":
         fig = simsopt.geo.plot(
             [optimization_res[0][-1]] + optimization_res[1],
@@ -318,8 +318,11 @@ def display_hover_data(hover_data, selected_surface_type):
             bdistrib_io.get_file_path(result_id, "regcoil"), -1
         )
 
-    # type: ignore
-    return fig.update_layout(height=600, title=f"ID: {result_id}", scene=dict(aspectmode="data"))
+    return fig.update_layout(  # type: ignore
+        height=600,
+        title=f"ID: {result_id}",
+        scene=dict(aspectmode="data"),
+    )
 
 
 app.run(debug=True, port="8051")
