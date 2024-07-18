@@ -21,7 +21,8 @@ def run_regcoil(
         plasma_path = plasma_surface
 
     if isinstance(winding_surface, simsopt.geo.Surface):
-        bdistrib_io.write_nescin_file(winding_path, winding_surface.to_RZFourier())
+        bdistrib_io.write_nescin_file(
+            winding_path, winding_surface.to_RZFourier())
     elif isinstance(winding_surface, str):
         winding_path = winding_surface
 
@@ -66,8 +67,8 @@ def get_regcoil_metrics(ID):
 
     with netcdf_file(bdistrib_io.get_file_path(ID, "regcoil"), "r", mmap=False) as f:
         regcoil_results = {}
+        lambdas = f.variables["lambda"][()]
         for key in [
-            "lambda",
             "chi2_B",
             "chi2_K",
             "chi2_Laplace_Beltrami",
@@ -79,7 +80,7 @@ def get_regcoil_metrics(ID):
             regcoil_results[key + "[-1]"] = metric_for_different_lambda[-1]
             regcoil_results[key + " (linear fit)"] = np.polyfit(
                 metric_for_different_lambda,
-                np.linspace(0, 1, len(metric_for_different_lambda)),
+                lambdas,
                 1,
             )[0]
         regcoil_results["ID"] = ID
