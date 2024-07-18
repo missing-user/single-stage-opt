@@ -1,23 +1,24 @@
-import dash
+import os
+import numpy as np
+import pandas as pd
 import simsopt
 import simsopt.geo
-import dash_bootstrap_components as dbc
-import pandas as pd
-import numpy as np
 
+import dash
+import diskcache
+import dash_bootstrap_components as dbc
 import plotly.io as pio
 import plotly.express as px
 import plotly.graph_objects as go
-import os
+
 import precompute_complexities
 import precompute_regcoil
-
+import regcoil_plot
 import bdistrib_util
 import bdistrib_io
 
 pio.templates.default = "plotly_dark"
 
-import diskcache
 
 cache = diskcache.Cache("./cache")
 long_callback_manager = dash.long_callback.DiskcacheLongCallbackManager(cache)
@@ -85,7 +86,8 @@ app.layout = dash.html.Div(
                     )
                 ),
                 dbc.Col(
-                    dash.dcc.Loading(dash.dcc.Graph(id="correlation-plot", figure={}))
+                    dash.dcc.Loading(dash.dcc.Graph(
+                        id="correlation-plot", figure={}))
                 ),
             ]
         ),
@@ -93,14 +95,16 @@ app.layout = dash.html.Div(
             [
                 dbc.Col(
                     dash.dcc.Loading(
-                        dash.dcc.Graph(id="efficiency-sequence-plot", figure={})
+                        dash.dcc.Graph(
+                            id="efficiency-sequence-plot", figure={})
                     )
                 ),
                 dbc.Col(
                     [
                         dash.dcc.Dropdown(
                             id="plasma-surface-dropdown",
-                            options=["lcfs", "bdistrib surfaces"],
+                            options=["lcfs", "bdistrib surfaces",
+                                     "regcoil surfaces"],
                             value="lcfs",
                         ),
                         dash.dcc.Loading(
@@ -127,7 +131,8 @@ app.layout = dash.html.Div(
         )
     ],
     manager=long_callback_manager,
-    progress=[dash.Output("progress-bar", "value"), dash.Output("progress-bar", "max")],
+    progress=[dash.Output("progress-bar", "value"),
+              dash.Output("progress-bar", "max")],
 )
 def load_results(set_progress, max_ID):
     max_ID = int(max_ID)
@@ -138,6 +143,7 @@ def load_results(set_progress, max_ID):
     df: pd.DataFrame = pd.read_pickle("QUASR_db/QA_database_26032024.pkl")
     df["complexity"] = df["max_kappa"] + df["max_msc"]
     df["log(qs error)"] = np.log(df["qs_error"])
+    print("Raw dataset has", len(df), "entries")
 
     # df = bdistrib_util.sanitize_df_for_analysis(simsopt_objs)
     set_progress(("3", "5"))
@@ -146,11 +152,13 @@ def load_results(set_progress, max_ID):
     for ID in range(max_ID):
         bdistrib_path = bdistrib_io.get_file_path(ID, "bdistrib")
         if os.path.exists(bdistrib_path):
-            results_dict = bdistrib_util.rate_of_efficiency_sequence(bdistrib_path)
+            results_dict = bdistrib_util.rate_of_efficiency_sequence(
+                bdistrib_path)
             results_dict["ID"] = ID
             efficiencies.append(results_dict)
             set_progress((str(ID), str(2 * max_ID)))
-    df = df.merge(pd.DataFrame(efficiencies), left_on="ID", right_on="ID")
+    # df = df.merge(pd.DataFrame(efficiencies), left_on="ID", right_on="ID")
+    print("Loaded", len(efficiencies), "efficiency sequences")
 
     # Compute coil complexity from coils
     def get_complexity(ID):
@@ -161,12 +169,18 @@ def load_results(set_progress, max_ID):
 
     # complexity = [get_complexity(ID) for ID in df["ID"]]
     # df = df.merge(pd.DataFrame(complexity), left_on="ID", right_on="ID")
+    # print("Loaded", len(complexity ), "complexities for analysis")
 
-    df = df.merge(
-        pd.DataFrame([precompute_regcoil.get_regcoil_metrics(ID) for ID in df["ID"]]),
-        left_on="ID",
-        right_on="ID",
-    ).infer_objects()
+    regcoils = []
+    for ID in df["ID"]:
+        regcoil_path = bdistrib_io.get_file_path(ID, "regcoil")
+        if os.path.exists(regcoil_path):
+            results_dict = precompute_regcoil.get_regcoil_metrics(ID)
+            regcoils.append(results_dict)
+    df = df.merge(pd.DataFrame(regcoils), left_on="ID",
+                  right_on="ID").infer_objects()
+    print("Loaded", len(regcoils), "regcoils for analysis")
+    print("Finally", len(df), "datasets for analysis")
 
     return df.select_dtypes(exclude=["object"]).to_dict("records")
 
@@ -235,11 +249,11 @@ def scatterplot(dfstore, xscalar, yscalar, logatirhmic):
     dash.Input("bdistrib-matrix-dropdown", "value"),
     dash.Input("sequence-dropdown", "value"),
 )
-def display_hover_data1(hoverData, selected_matrix, selected_sequence):
-    if not hoverData or not "customdata" in hoverData["points"][0]:
+def efficiency_sequence_plot(hover_data, selected_matrix, selected_sequence):
+    if not hover_data or not "customdata" in hover_data["points"][0]:
         return {}
 
-    ID = int(hoverData["points"][0]["customdata"][0])
+    ID = int(hover_data["points"][0]["customdata"][0])
 
     results = bdistrib_util.rate_of_efficiency_sequence(
         bdistrib_io.get_file_path(ID, "bdistrib"), plot=True
@@ -280,11 +294,11 @@ def display_hover_data1(hoverData, selected_matrix, selected_sequence):
     dash.Input("metric-scatter-plot", "clickData"),
     dash.Input("plasma-surface-dropdown", "value"),
 )
-def display_hover_data(hoverData, selected_surface_type):
-    if not hoverData or not "customdata" in hoverData["points"][0]:
+def display_hover_data(hover_data, selected_surface_type):
+    if not hover_data or not "customdata" in hover_data["points"][0]:
         return {}
 
-    result_id = int(hoverData["points"][0]["customdata"][0])
+    result_id = int(hover_data["points"][0]["customdata"][0])
     optimization_res = simsopt.load(bdistrib_io.get_file_path(result_id))
 
     fig = None
@@ -299,8 +313,13 @@ def display_hover_data(hoverData, selected_surface_type):
         fig = bdistrib_util.plot_bdistrib_surfaces(
             bdistrib_io.get_file_path(result_id, "bdistrib"), figure=fig
         )
+    elif selected_surface_type == "regcoil surfaces":
+        fig = regcoil_plot.plot_current_contours(
+            bdistrib_io.get_file_path(result_id, "regcoil"), -1
+        )
 
-    return fig.update_layout(height=600, title=f"ID: {result_id}", scene=dict(aspectmode="data"))  # type: ignore
+    # type: ignore
+    return fig.update_layout(height=600, title=f"ID: {result_id}", scene=dict(aspectmode="data"))
 
 
 app.run(debug=True, port="8051")
