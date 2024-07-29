@@ -102,6 +102,32 @@ def plot_current_contours(filepath, ilambda=0):
     return fig
 
 
+def plot_current_contours_surface(filepath, ilambda=0, figure=None, num_coils_per_hp=0):
+    data = load_netcdf_data(filepath)
+    potentials_for_lambda = data["current_potential"][ilambda]
+    if num_coils_per_hp > 0:
+        bins = np.linspace(
+            np.min(potentials_for_lambda),
+            np.max(potentials_for_lambda),
+            num_coils_per_hp + 1,
+        )
+        potentials_for_lambda = np.digitize(potentials_for_lambda, bins)
+    potentials_for_lambda = np.tile(potentials_for_lambda, (data["nfp"], 1))
+    r_array = data["r_plasma"]
+
+    fig = figure if isinstance(figure, go.Figure) else go.Figure()
+
+    fig.add_trace(
+        go.Surface(
+            x=r_array[:, :, 0],
+            y=r_array[:, :, 1],
+            z=r_array[:, :, 2],
+            surfacecolor=potentials_for_lambda,
+        )
+    )
+    return fig
+
+
 def get_cross_section(r_array, zetal_old, zeta_new, nfp):
     zetal_old = np.concatenate((zetal_old - nfp, zetal_old))
     r_array = np.concatenate((r_array, r_array), axis=0)

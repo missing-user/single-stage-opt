@@ -66,8 +66,9 @@ def get_regcoil_metrics(ID):
     import numpy as np
 
     with netcdf_file(bdistrib_io.get_file_path(ID, "regcoil"), "r", mmap=False) as f:
-        regcoil_results = {}
         lambdas = f.variables["lambda"][()]
+        regcoil_results = {"lambda": float(lambdas[-1]), "ID": ID}
+        print(regcoil_results["lambda"])
         for key in [
             "chi2_B",
             "chi2_K",
@@ -78,12 +79,11 @@ def get_regcoil_metrics(ID):
             metric_for_different_lambda = f.variables[key][()]
             regcoil_results[key] = metric_for_different_lambda
             regcoil_results[key + "[-1]"] = metric_for_different_lambda[-1]
-            regcoil_results[key + " (linear fit)"] = np.polyfit(
-                metric_for_different_lambda,
-                lambdas,
-                1,
-            )[0]
-        regcoil_results["ID"] = ID
+            # regcoil_results[key + " (linear fit)"] = np.polyfit(
+            #     metric_for_different_lambda,
+            #     lambdas,
+            #     1,
+            # )[0]
     return regcoil_results
 
 

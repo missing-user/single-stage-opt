@@ -107,9 +107,9 @@ app.layout = dash.html.Div(
                                      "regcoil surfaces"],
                             value="lcfs",
                         ),
-                        dash.dcc.Loading(
-                            dash.dcc.Graph(id="plasma-surface-plot", figure={})
-                        ),
+                        # dash.dcc.Loading(
+                        dash.dcc.Graph(id="plasma-surface-plot", figure={}),
+                        # ),
                     ]
                 ),
             ]
@@ -208,6 +208,8 @@ def correlationplot(dfstore):
     dash.Input("correlation-plot", "clickData"),
 )
 def select_correlation(clickdata):
+    if "points" not in clickdata:
+        return None, None
     return clickdata["points"][0]["x"], [p["y"] for p in clickdata["points"]]
 
 
@@ -255,6 +257,9 @@ def efficiency_sequence_plot(hover_data, selected_matrix, selected_sequence):
 
     ID = int(hover_data["points"][0]["customdata"][0])
 
+    if not os.path.exists(bdistrib_io.get_file_path(ID, "bdistrib")):
+        return {}
+
     results = bdistrib_util.rate_of_efficiency_sequence(
         bdistrib_io.get_file_path(ID, "bdistrib"), plot=True
     )
@@ -299,10 +304,10 @@ def display_hover_data(hover_data, selected_surface_type):
         return {}
 
     result_id = int(hover_data["points"][0]["customdata"][0])
-    optimization_res = simsopt.load(bdistrib_io.get_file_path(result_id))
 
     fig: go.Figure | None = None
     if selected_surface_type == "lcfs":
+        optimization_res = simsopt.load(bdistrib_io.get_file_path(result_id))
         fig = simsopt.geo.plot(
             [optimization_res[0][-1]] + optimization_res[1],
             show=False,
@@ -314,8 +319,18 @@ def display_hover_data(hover_data, selected_surface_type):
             bdistrib_io.get_file_path(result_id, "bdistrib"), figure=fig
         )
     elif selected_surface_type == "regcoil surfaces":
-        fig = regcoil_plot.plot_current_contours(
-            bdistrib_io.get_file_path(result_id, "regcoil"), -1
+        optimization_res = simsopt.load(bdistrib_io.get_file_path(result_id))
+        fig = simsopt.geo.plot(
+            optimization_res[1],
+            show=False,
+            engine="plotly",
+            close=True,
+        )
+        fig = regcoil_plot.plot_current_contours_surface(
+            bdistrib_io.get_file_path(result_id, "regcoil"),
+            -1,
+            figure=fig,
+            num_coils_per_hp=4,
         )
 
     return fig.update_layout(  # type: ignore
