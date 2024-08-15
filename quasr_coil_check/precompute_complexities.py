@@ -9,6 +9,7 @@ import json
 from skimage.filters import window
 
 from pathlib import Path
+import precompute_surfaces
 
 
 def compute_complexity(ID):
@@ -28,16 +29,19 @@ def compute_complexity(ID):
     MSC_WEIGHT = 1
 
     Jls = LENGTH_WEIGHT * sum(
-        [QuadraticPenalty(simsopt.geo.CurveLength(c), TARGET_LENGTH) for c in curves]
+        [QuadraticPenalty(simsopt.geo.CurveLength(c), TARGET_LENGTH)
+         for c in curves]
     )
     Jccdist = CC_WEIGHT * simsopt.geo.CurveCurveDistance(curves, CC_THRESHOLD)
-    Jcsdist = simsopt.geo.CurveSurfaceDistance(curves, lcfs, lcfs.minor_radius())
+    Jcsdist = simsopt.geo.CurveSurfaceDistance(
+        curves, lcfs, lcfs.minor_radius())
     Jcs = CURVATURE_WEIGHT * sum(
         [simsopt.geo.LpCurveCurvature(c, 2, 0.5) for c in curves]
     )
     Jmscs = MSC_WEIGHT * sum(
         [
-            QuadraticPenalty(simsopt.geo.MeanSquaredCurvature(c), MSC_THRESHOLD, "max")
+            QuadraticPenalty(simsopt.geo.MeanSquaredCurvature(
+                c), MSC_THRESHOLD, "max")
             for c in curves
         ]
     )
@@ -70,7 +74,8 @@ def spectral_power(Bn: np.ndarray):
     center_x = (Bn.shape[0] - w.shape[0]) // 2
     center_y = (Bn.shape[1] - w.shape[1]) // 2
     w_padded = np.ones_like(Bn)
-    w_padded[center_x : center_x + w.shape[0], center_y : center_y + w.shape[1]] = w
+    w_padded[center_x: center_x + w.shape[0],
+             center_y: center_y + w.shape[1]] = w
     fftImg = np.fft.fft2(Bn)
     windowedImg = np.fft.fftshift(w_padded) * np.abs(fftImg)
 
@@ -79,14 +84,15 @@ def spectral_power(Bn: np.ndarray):
 
 def possibly_add_spectral_power(complexity_dict: dict, ID, comppath):
     if "spectral_power" not in complexity_dict:
-        spath = bdistrib_io.get_file_path(ID, "surfaces")
-        if Path().exists():
-            j_surfaces = simsopt.load(spath)
-            complexity_dict["spectral_power"] = spectral_power(j_surfaces["BdotN"])
-            with open(comppath, "w") as f:
-                json.dump(complexity_dict, f)
-        else:
+        j_surfaces = precompute_surfaces.cached_get_surfaces(ID)
+        if j_surfaces is None:
             print(ID, "has no associated surfaces")
+            return complexity_dict
+
+        complexity_dict["spectral_power"] = spectral_power(j_surfaces["BdotN"])
+        with open(comppath, "w") as f:
+            json.dump(complexity_dict, f)
+
     return complexity_dict
 
 

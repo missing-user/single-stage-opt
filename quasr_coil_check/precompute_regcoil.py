@@ -12,6 +12,7 @@ REGCOIL_OUT_TMP_PATH = "regcoil_out.python_generated.nc"
 def run_regcoil(
     plasma_surface: simsopt.geo.SurfaceRZFourier | str,
     winding_surface: simsopt.geo.SurfaceRZFourier | str,
+    ID: int = -1,  # ID is only used for debugging, will appear as a comment in the input file
 ):
     plasma_path = "wout_surfaces_python_generated.nc"
     winding_path = "nescin.winding_surface"
@@ -33,7 +34,7 @@ def run_regcoil(
   target_value = 0.05 ! Arbitrarily chosen based on 3 randomly selected configurations. Will need tweaking
 
   geometry_option_plasma = 2
-  wout_filename='./{plasma_path}'
+  wout_filename='./{plasma_path}' ! {ID}
 
   geometry_option_coil=3
   nescin_filename = './{winding_path}'
@@ -52,7 +53,7 @@ def compute_and_save(ID: int):
     if res is None:
         print("Invalid surface for file for ID=", ID)
         return 1
-    exit_code = run_regcoil(res["lcfs"], res["coil_surf"])
+    exit_code = run_regcoil(res["lcfs"], res["coil_surf"], ID)
     if exit_code == 0:
         comppath = bdistrib_io.get_file_path(ID, "regcoil")
         Path(comppath).parent.mkdir(parents=True, exist_ok=True)
@@ -67,8 +68,8 @@ def get_regcoil_metrics(ID):
 
     with netcdf_file(bdistrib_io.get_file_path(ID, "regcoil"), "r", mmap=False) as f:
         lambdas = f.variables["lambda"][()]
+        # print(lambdas)
         regcoil_results = {"lambda": float(lambdas[-1]), "ID": ID}
-        print(regcoil_results["lambda"])
         for key in [
             "chi2_B",
             "chi2_K",

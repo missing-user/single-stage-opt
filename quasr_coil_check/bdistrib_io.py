@@ -49,8 +49,8 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
         mpol = int(f.variables["mpol"][()]) - 1
         ntor = int(f.variables["ntor"][()])
         surface.change_resolution(mpol, ntor)
-        f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor :]
-        f.variables["zmns"][:] = surface.zs.flatten()[surface.ntor :]
+        f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor:]
+        f.variables["zmns"][:] = surface.zs.flatten()[surface.ntor:]
 
         # Divided by old nfp multiplied by new nfp
         f.variables["xn"][:] = (
@@ -151,10 +151,10 @@ def write_bdistribin(
     return filename_out
 
 
-############# NESCIN
+# NESCIN
 
 
-def read_nescin_file(filename: str, nfp):
+def read_nescin_file(filename: str, nfp) -> simsopt.geo.SurfaceRZFourier:
     surf = simsopt.geo.SurfaceRZFourier(nfp)
     with open(filename, "r") as f:
         lines = f.readlines()
@@ -163,7 +163,7 @@ def read_nescin_file(filename: str, nfp):
     for i, line in enumerate(lines):
         if line.startswith("------ Current Surface"):
             mnmax = int(lines[i + 2])
-            lines = lines[i + 5 :]
+            lines = lines[i + 5:]
             break
     assert len(lines) == mnmax
 
@@ -247,7 +247,7 @@ def load_simsopt_up_to(max_ID):
     return objs
 
 
-##### UNIT TESTS
+# UNIT TESTS
 
 if __name__ == "__main__":
     import random

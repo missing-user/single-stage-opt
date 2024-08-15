@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import surfgen
 
+
 def compute_B(coils, surface) -> np.ndarray:
     bs = simsopt.field.BiotSavart(coils)
     bs.set_points(surface.gamma().reshape((-1, 3)))
@@ -46,11 +47,12 @@ def compute_surfaces(ID):
         #     )
         # )
         # fig.show()  # type: ignore
-        return {}, False
+        return None, False
     target_distance = min(plasma_coil_distances)
 
     middle_surf = surfgen.surfgen(lcfs, target_distance * 0.5)
-    coil_surf = surfgen.surfgen(lcfs, target_distance, initial_guess=middle_surf)
+    coil_surf = surfgen.surfgen(
+        lcfs, target_distance, initial_guess=middle_surf)
 
     B = compute_B(coils, middle_surf)
     BdotN = compute_Bn(B, middle_surf)
@@ -73,7 +75,7 @@ def compute_and_store_surfaces(ID):
     return surfaces
 
 
-def cached_get_surfaces(ID) -> dict:
+def cached_get_surfaces(ID) -> dict | None:
     """Returns a dict with the plasma surface, optimized middle surface, optimized winding surface and some meta information.
     Example:
     {
@@ -111,7 +113,7 @@ if __name__ == "__main__":
     for i in range(min_ID, max_ID):
         if os.path.exists(bdistrib_io.get_file_path(i, "simsopt")):
             res = cached_get_surfaces(i)
-            if plot:
+            if res is not None and plot:
                 simsopt.geo.plot(
                     [res["lcfs"], res["middle_surf"], res["coil_surf"]],
                     engine="plotly",
