@@ -38,7 +38,31 @@ def read_netcdf(filename: str):
 
 
 def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
-    filename_template = "../bdistrib/equilibria/wout_w7x_standardConfig.nc"
+    # HACK: To generate the template file
+    # B_VOL_AVG_TARGET = 5.865 #T
+    # magnetic_scaling = B_VOL_AVG_TARGET / equil.wout.volavgB
+
+    # from scipy.io import netcdf_file
+    # import os
+
+    # filename = "wout_circular_tokamak_reference_LgradBscaling.nc"
+    # os.system(f"cp ../tests/test_files/wout_circular_tokamak_reference.nc {filename}")
+
+    # # Copy the file on disk with a new name, open with r+ and overwrite it.
+    # with netcdf_file(filename, "a", mmap=False) as f:
+    #     f.variables["bvco"][:] *= magnetic_scaling
+    #     f.variables["b0"][()] *= magnetic_scaling
+    #     f.variables["bmnc"][:] *= magnetic_scaling
+    #     f.variables["volavgB"][()] *= magnetic_scaling
+    #     f.variables["bsubsmns"][:] *= magnetic_scaling
+    #     f.variables["bsubumnc"][:] *= magnetic_scaling
+    #     f.variables["bsubvmnc"][:] *= magnetic_scaling
+    #     f.variables["bsupumnc"][:] *= magnetic_scaling
+    #     f.variables["bsupvmnc"][:] *= magnetic_scaling
+
+    filename_template = (
+        "../lgradb_normalization/wout_circular_tokamak_reference_LgradBscaling.nc"
+    )
     os.system(f"cp {filename_template} {filename}")
 
     # Copy the file on disk with a new name, open with r+ and overwrite it.
@@ -58,18 +82,7 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
         )
         f.variables["nfp"][()] = surface.nfp
         f.variables["Rmajor_p"][()] = surface.major_radius()
-
-        # TODO: Net poloidal current profile (bvco), net poloidal current Amperes is computed from this
-        # net_poloidal_current_Amperes = (2*pi/mu0) * (1.5*bvco(end) - 0.5*bvco(end-1));
-        # f.variables["bvco"][:] = np.zeros(f.variables["lmns"][()].shape)
-
-        # TODO: set lmns component? sinmn component of lambda, half mesh
-        # TODO: GMNC component? Both dont seem to have an impact
-        # f.variables["gmnc"][:] = np.zeros(f.variables["gmnc"][()].shape)
-        # f.variables["lmns"][:] = np.zeros(f.variables["lmns"][()].shape)
-
-        # HACK sets the success flag to true so the input reading doesnt fail
-        f.variables["ier_flag"][()] = 0
+        f.variables["Aminor_p"][()] = surface.minor_radius()
 
     return filename.replace("wout_", "")
 
