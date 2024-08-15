@@ -109,11 +109,11 @@ def plot_current_contours_surface(filepath, ilambda=0, figure=None, num_coils_pe
         bins = np.linspace(
             np.min(potentials_for_lambda),
             np.max(potentials_for_lambda),
-            num_coils_per_hp + 1,
+            num_coils_per_hp * 2 + 2,
         )
         potentials_for_lambda = np.digitize(potentials_for_lambda, bins)
     potentials_for_lambda = np.tile(potentials_for_lambda, (data["nfp"], 1))
-    r_array = data["r_plasma"]
+    r_array = data["r_coil"]
 
     fig = figure if isinstance(figure, go.Figure) else go.Figure()
 
