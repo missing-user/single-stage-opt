@@ -31,7 +31,7 @@ def run_regcoil(
   general_option = 5 ! Check if target is attainable first
   Nlambda = 16
   target_option = "rms_Bnormal"
-  target_value = 0.05 ! Arbitrarily chosen based on 3 randomly selected configurations. Will need tweaking
+  target_value = 0.01 ! Threshold value for LgradB paper
 
   geometry_option_plasma = 2
   wout_filename='./{plasma_path}' ! {ID}
