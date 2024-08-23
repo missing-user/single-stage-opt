@@ -61,9 +61,7 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
     #     f.variables["bsupumnc"][:] *= magnetic_scaling
     #     f.variables["bsupvmnc"][:] *= magnetic_scaling
 
-    filename_template = (
-        "./wout_d23p4_tm_reference_LgradBscaling.nc"
-    )
+    filename_template = "./wout_d23p4_tm_reference_LgradBscaling.nc"
     os.system(f"cp {filename_template} {filename}")
 
     # Copy the file on disk with a new name, open with r+ and overwrite it.
@@ -73,8 +71,10 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
         # implicitly broadcasts the result throughout all flux surfaces
         mpol = int(f.variables["mpol"][()]) - 1
         ntor = int(f.variables["ntor"][()])
-        if mpol+1 < surface.mpol or ntor < surface.ntor:
-            warnings.warn(f"Dropping resolution when exporting surface to netcdf_file, due to my terrible, hacky implementation! Original: {surface.mpol, surface.ntor} now: {mpol, ntor}")
+        if mpol + 1 < surface.mpol or ntor < surface.ntor:
+            warnings.warn(
+                f"Dropping resolution when exporting surface to netcdf_file, due to my terrible, hacky implementation! Original: {surface.mpol, surface.ntor} now: {mpol, ntor}"
+            )
         surface.change_resolution(mpol, ntor)
         f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor:]
         f.variables["zmns"][:] = surface.zs.flatten()[surface.ntor:]
@@ -221,12 +221,18 @@ def write_nescin_file(filename: str, surface: simsopt.geo.SurfaceRZFourier):
 
         f.write("Table of fourier coefficients\n")
         f.write("m,n,crc,czs,crs,czc\n")
-        m = surface.m
-        n = surface.n
 
         for i in range(num_modes):
+            m = surface.m[i]
+            n = surface.n[i]
+
+            nsign = 1
+            if m == 0 and n < 0:
+                nsign = -1
+                n = abs(n)
+
             f.write(
-                f" {m[i]} {n[i]:+2d} {surface.get_rc(m[i], n[i]): .12E} {surface.get_zs(m[i], n[i]): .12E} {surface.get_rs(m[i], n[i]) if not surface.stellsym else 0: .12E} {surface.get_zc(m[i], n[i])  if not surface.stellsym else 0: .12E}\n"
+                f" {m} {n:+2d} {surface.get_rc(m, n): .12E} {nsign*surface.get_zs(m, n): .12E} {surface.get_rs(m, n) if not surface.stellsym else 0: .12E} {surface.get_zc(m, n)  if not surface.stellsym else 0: .12E}\n"
             )
 
 
