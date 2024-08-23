@@ -168,8 +168,6 @@ def write_bdistribin(
 
 
 # NESCIN
-
-
 def read_nescin_file(filename: str, nfp) -> simsopt.geo.SurfaceRZFourier:
     surf = simsopt.geo.SurfaceRZFourier(nfp)
     with open(filename, "r") as f:
@@ -227,12 +225,11 @@ def write_nescin_file(filename: str, surface: simsopt.geo.SurfaceRZFourier):
             n = surface.n[i]
 
             nsign = 1
-            if m == 0 and n < 0:
+            if m == 0 and n > 0:
                 nsign = -1
-                n = abs(n)
 
             f.write(
-                f" {m} {n:+2d} {surface.get_rc(m, n): .12E} {nsign*surface.get_zs(m, n): .12E} {surface.get_rs(m, n) if not surface.stellsym else 0: .12E} {surface.get_zc(m, n)  if not surface.stellsym else 0: .12E}\n"
+                f" {m} {nsign*n:+2d} {surface.get_rc(m, n): .12E} {nsign*surface.get_zs(m, n): .12E} {surface.get_rs(m, n) if not surface.stellsym else 0: .12E} {surface.get_zc(m, n)  if not surface.stellsym else 0: .12E}\n"
             )
 
 
@@ -273,21 +270,19 @@ def load_simsopt_up_to(max_ID):
 
 if __name__ == "__main__":
     import random
+    random.seed(42)
     import os
 
     def compare_surfaces(s1, s2):
         assert s1.ntor == s2.ntor
         assert s1.mpol == s2.mpol
-        return (
-            s1.nfp == s2.nfp
-            and s1.ntor == s2.ntor
-            and s1.mpol == s2.mpol
-            and np.allclose(s1.rc, s2.rc)
-            and np.allclose(s1.zs, s2.zs)
-            and np.allclose(s1.zc, s2.zc)
-            and np.allclose(s1.rs, s2.rs)
-        )
-
+        assert s1.nfp == s2.nfp
+        assert np.allclose(s1.zs, s2.zs)
+        assert np.allclose(s1.rc, s2.rc)
+        assert np.allclose(s1.zc, s2.zc)
+        assert np.allclose(s1.rs, s2.rs)
+        return True
+        
     surf = simsopt.geo.SurfaceRZFourier(5, ntor=5, mpol=3)
     assert compare_surfaces(surf, surf)  # Confirm comparison works at all
 
@@ -307,6 +302,6 @@ if __name__ == "__main__":
     ncdfsurf2 = read_netcdf("unit_test.nc")
     assert compare_surfaces(surf, ncdfsurf2)
     os.remove("unit_test.nc")
-    os.remove("nescin.unit_test")
+    # os.remove("nescin.unit_test")
 
     print("Success")
