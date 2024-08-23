@@ -4,6 +4,7 @@ import simsopt.geo
 import simsopt.field
 from scipy.io import netcdf_file
 import os
+import warnings
 
 
 def read_netcdf(filename: str):
@@ -45,8 +46,8 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
     # from scipy.io import netcdf_file
     # import os
 
-    # filename = "wout_circular_tokamak_reference_LgradBscaling.nc"
-    # os.system(f"cp ../tests/test_files/wout_circular_tokamak_reference.nc {filename}")
+    # filename = "wout_d23p4_tm_reference_LgradBscaling.nc"
+    # os.system(f"cp ../../regcoil/equilibria/wout_d23p4_tm.nc {filename}")
 
     # # Copy the file on disk with a new name, open with r+ and overwrite it.
     # with netcdf_file(filename, "a", mmap=False) as f:
@@ -61,7 +62,7 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
     #     f.variables["bsupvmnc"][:] *= magnetic_scaling
 
     filename_template = (
-        "../lgradb_normalization/wout_circular_tokamak_reference_LgradBscaling.nc"
+        "./wout_d23p4_tm_reference_LgradBscaling.nc"
     )
     os.system(f"cp {filename_template} {filename}")
 
@@ -72,6 +73,8 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
         # implicitly broadcasts the result throughout all flux surfaces
         mpol = int(f.variables["mpol"][()]) - 1
         ntor = int(f.variables["ntor"][()])
+        if mpol+1 < surface.mpol or ntor < surface.ntor:
+            warnings.warn(f"Dropping resolution when exporting surface to netcdf_file, due to my terrible, hacky implementation! Original: {surface.mpol, surface.ntor} now: {mpol, ntor}")
         surface.change_resolution(mpol, ntor)
         f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor:]
         f.variables["zmns"][:] = surface.zs.flatten()[surface.ntor:]

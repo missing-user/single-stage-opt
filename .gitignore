@@ -1,4 +1,5 @@
 .vscode/
+quasr_coil_check/QUASR_db/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

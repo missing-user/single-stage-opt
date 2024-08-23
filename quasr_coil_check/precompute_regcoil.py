@@ -10,8 +10,8 @@ REGCOIL_OUT_TMP_PATH = "regcoil_out.python_generated.nc"
 
 
 def run_regcoil(
-    plasma_surface: simsopt.geo.SurfaceRZFourier | str,
-    winding_surface: simsopt.geo.SurfaceRZFourier | str,
+    plasma_surface: simsopt.geo.Surface | str,
+    winding_surface: simsopt.geo.Surface | str,
     ID: int = -1,  # ID is only used for debugging, will appear as a comment in the input file
 ):
     plasma_path = "wout_surfaces_python_generated.nc"
@@ -20,16 +20,26 @@ def run_regcoil(
         bdistrib_io.write_netcdf(plasma_path, plasma_surface.to_RZFourier())
     elif isinstance(plasma_surface, str):
         plasma_path = plasma_surface
+    else:
+        raise ValueError(f"InvalidArgument type for plasma_path (was {type(plasma_path)}) in run_regcoil")  
 
     if isinstance(winding_surface, simsopt.geo.Surface):
         bdistrib_io.write_nescin_file(
             winding_path, winding_surface.to_RZFourier())
     elif isinstance(winding_surface, str):
         winding_path = winding_surface
-
+    else:
+        raise ValueError(f"InvalidArgument type for winding_surface (was {type(winding_surface)}) in run_regcoil")    
+    surface_resolution = 128
     input_string = f"""&regcoil_nml
   general_option = 5 ! Check if target is attainable first
   Nlambda = 16
+  ntheta_coil = {surface_resolution}
+  ntheta_plasma = {surface_resolution}
+  nzeta_coil = {surface_resolution}
+  nzeta_plasma = {surface_resolution}
+  mpol_potential = 18
+  ntor_potential = 18
   target_option = "rms_Bnormal"
   target_value = 0.01 ! Threshold value for LgradB paper
 
@@ -38,13 +48,15 @@ def run_regcoil(
 
   geometry_option_coil=3
   nescin_filename = './{winding_path}'
+  !geometry_option_coil=2
+  !separation=0.1
 
   symmetry_option = 3
 /
 """
     with open(REGCOIL_IN_TMP_PATH, "w") as f:
         f.write(input_string)
-    return subprocess.check_call(["../regcoil/regcoil", REGCOIL_IN_TMP_PATH])
+    return subprocess.check_call(["../../regcoil/regcoil", REGCOIL_IN_TMP_PATH])
 
 
 def compute_and_save(ID: int):
@@ -54,11 +66,11 @@ def compute_and_save(ID: int):
         print("Invalid surface for file for ID=", ID)
         return 1
     exit_code = run_regcoil(res["lcfs"], res["coil_surf"], ID)
+
     if exit_code == 0:
         comppath = bdistrib_io.get_file_path(ID, "regcoil")
         Path(comppath).parent.mkdir(parents=True, exist_ok=True)
         Path(REGCOIL_OUT_TMP_PATH).rename(comppath)
-        return exit_code
     return exit_code
 
 
