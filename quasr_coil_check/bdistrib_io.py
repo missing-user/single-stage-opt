@@ -199,10 +199,10 @@ def read_nescin_file(filename: str, nfp) -> simsopt.geo.SurfaceRZFourier:
             # Negative mode numbers for m=0 are a weird convention...
             nsign = -1 if n < 0 else 1
             surf.set_rc(m, abs(n), float(numbers[2]))
-            surf.set_zs(m, abs(n), nsign * float(numbers[3]))
+            surf.set_zs(m, abs(n), -nsign*float(numbers[3]))
         else:
             surf.set_rc(m, n, float(numbers[2]))
-            surf.set_zs(m, n, float(numbers[3]))
+            surf.set_zs(m, n, -float(numbers[3]))
 
     print("rc10", surf.get_rc(1, 0))
     print("zs10", surf.get_zs(1, 0))
@@ -229,7 +229,7 @@ def write_nescin_file(filename: str, surface: simsopt.geo.SurfaceRZFourier):
                 nsign = -1
 
             f.write(
-                f" {m} {nsign*n:+2d} {surface.get_rc(m, n): .12E} {nsign*surface.get_zs(m, n): .12E} {surface.get_rs(m, n) if not surface.stellsym else 0: .12E} {surface.get_zc(m, n)  if not surface.stellsym else 0: .12E}\n"
+                f" {m} {nsign*n:+2d} {surface.get_rc(m, n): .12E} {-nsign*surface.get_zs(m, n): .12E} {-surface.get_rs(m, n) if not surface.stellsym else 0: .12E} {surface.get_zc(m, n)  if not surface.stellsym else 0: .12E}\n"
             )
 
 
