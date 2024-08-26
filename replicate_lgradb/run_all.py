@@ -1,8 +1,8 @@
-import find_single_l
+from . import find_single_l
 import os
 import simsopt
 
-for top, dirs, files in os.walk("db"):
+for top, dirs, files in os.walk("replicate_lgradb/db"):
     for file in files:
         if os.path.splitext(file)[1] != ".json":
             continue
