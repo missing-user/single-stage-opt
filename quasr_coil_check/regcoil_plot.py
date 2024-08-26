@@ -284,3 +284,13 @@ def plot_chi2(filepath):
         figs.append(fig)
 
     return figs
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) >1:
+        figs = plot_surfaces(sys.argv[1])
+        figs[0].show()
+        figs[1].show()
+        plot_chi2(sys.argv[1]).show()
+        plot_current_contours(sys.argv[1]).show()
+        plot_current_contours_surface(sys.argv[1]).show()

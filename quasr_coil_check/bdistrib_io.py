@@ -25,12 +25,11 @@ def read_netcdf(filename: str):
 
             if m == 0:
                 # Negative mode numbers for m=0 are a weird convention...
-                nsign = -1 if n < 0 else 1
                 surface.set_rc(m, abs(n), f.variables["rmnc"][-1, i])
-                surface.set_zs(m, abs(n), f.variables["zmns"][-1, i])
+                surface.set_zs(m, abs(n), -f.variables["zmns"][-1, i])
             else:
                 surface.set_rc(m, n, f.variables["rmnc"][-1, i])
-                surface.set_zs(m, n, f.variables["zmns"][-1, i])
+                surface.set_zs(m, n, -f.variables["zmns"][-1, i])
 
         print("rc10", surface.get_rc(1, 0))
         print("zs10", surface.get_zs(1, 0))
@@ -61,7 +60,7 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
     #     f.variables["bsupumnc"][:] *= magnetic_scaling
     #     f.variables["bsupvmnc"][:] *= magnetic_scaling
 
-    filename_template = "./wout_d23p4_tm_reference_LgradBscaling.nc"
+    filename_template = f"{os.path.dirname(__file__)}/wout_d23p4_tm_reference_LgradBscaling.nc"
     os.system(f"cp {filename_template} {filename}")
 
     # Copy the file on disk with a new name, open with r+ and overwrite it.
@@ -77,7 +76,7 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
             )
         surface.change_resolution(mpol, ntor)
         f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor:]
-        f.variables["zmns"][:] = surface.zs.flatten()[surface.ntor:]
+        f.variables["zmns"][:] = -surface.zs.flatten()[surface.ntor:]
 
         # Divided by old nfp multiplied by new nfp
         f.variables["xn"][:] = (
@@ -197,7 +196,7 @@ def read_nescin_file(filename: str, nfp) -> simsopt.geo.SurfaceRZFourier:
         n = int(numbers[1])
         
         surf.set_rc(m, n, float(numbers[2]))
-        surf.set_zs(m, n, -float(numbers[3]))
+        surf.set_zs(m, n, float(numbers[3]))
 
     print("rc10", surf.get_rc(1, 0))
     print("zs10", surf.get_zs(1, 0))
@@ -220,26 +219,26 @@ def write_nescin_file(filename: str, surface: simsopt.geo.SurfaceRZFourier):
             n = surface.n[i]
 
             f.write(
-                f" {m} {n:+2d} {surface.get_rc(m, n): .12E} {-surface.get_zs(m, n): .12E} {-surface.get_rs(m, n) if not surface.stellsym else 0: .12E} {surface.get_zc(m, n)  if not surface.stellsym else 0: .12E}\n"
+                f" {m} {n:+2d} {surface.get_rc(m, n): .12E} {surface.get_zs(m, n): .12E} {surface.get_rs(m, n) if not surface.stellsym else 0: .12E} {surface.get_zc(m, n)  if not surface.stellsym else 0: .12E}\n"
             )
 
 
-def get_file_path(ID, type="simsopt"):
-    """Returns the relative file paths into the QUASR db folder structure for one of then following file types:
+def get_file_path(ID, file_type="simsopt"):
+    """Returns the relative file paths into the QUASR db folder structure for one of then following file file_types:
     [simsopt, complexity, nml, bdistrib, regcoil, surfaces]"""
     fID = ID // 1000
-    if type == "simsopt":
-        return f"./QUASR_db/simsopt_serials/{fID:04}/serial{ID:07}.json"
-    elif type == "complexity":
-        return f"./QUASR_db/complexities/{fID:04}/complexity{ID:07}.json"
-    elif type == "nml":
-        return f"./QUASR_db/nml/{fID:04}/input{ID:07}"
-    elif type == "bdistrib":
-        return f"./QUASR_db/bdistrib_serials/{fID:04}/bdistrib_out.{ID:07}.nc"
-    elif type == "regcoil":
-        return f"./QUASR_db/regcoil/{fID:04}/regcoil_out.{ID:07}.nc"
-    elif type == "surfaces":
-        return f"./QUASR_db/surfaces/{fID:04}/surfaces{ID:07}.json"
+    if file_type == "simsopt":
+        return f"{os.path.dirname(__file__)}/QUASR_db/simsopt_serials/{fID:04}/serial{ID:07}.json"
+    elif file_type == "complexity":
+        return f"{os.path.dirname(__file__)}/QUASR_db/complexities/{fID:04}/complexity{ID:07}.json"
+    elif file_type == "nml":
+        return f"{os.path.dirname(__file__)}/QUASR_db/nml/{fID:04}/input{ID:07}"
+    elif file_type == "bdistrib":
+        return f"{os.path.dirname(__file__)}/QUASR_db/bdistrib_serials/{fID:04}/bdistrib_out.{ID:07}.nc"
+    elif file_type == "regcoil":
+        return f"{os.path.dirname(__file__)}/QUASR_db/regcoil/{fID:04}/regcoil_out.{ID:07}.nc"
+    elif file_type == "surfaces":
+        return f"{os.path.dirname(__file__)}/QUASR_db/surfaces/{fID:04}/surfaces{ID:07}.json"
     else:
         raise RuntimeError()
 
@@ -247,8 +246,8 @@ def get_file_path(ID, type="simsopt"):
 def load_simsopt_up_to(max_ID):
     objs = []
     for i in range(max_ID):
-        sopt_path = get_file_path(i, type="simsopt")
-        if os.path.exists(get_file_path(i, type="bdistrib")):
+        sopt_path = get_file_path(i, file_type="simsopt")
+        if os.path.exists(get_file_path(i, file_type="bdistrib")):
             try:
                 obj = simsopt.load(sopt_path)
                 objs.append({"surfaces": obj[0], "coils": obj[1], "ID": i})

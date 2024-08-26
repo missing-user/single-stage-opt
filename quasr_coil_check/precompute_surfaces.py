@@ -98,6 +98,7 @@ def cached_get_surfaces(ID) -> dict | None:
 if __name__ == "__main__":
     import sys
 
+    plot = sys.argv.count("--plot") > 0
     if len(sys.argv) == 2:
         min_ID = 0
         max_ID = int(sys.argv[1])
@@ -105,9 +106,8 @@ if __name__ == "__main__":
         min_ID = int(sys.argv[1])
         max_ID = int(sys.argv[2])
     else:
-        print("plase supply a (min and) max ID until which to process the files.")
+        print("plase supply a (min and) max ID until which to process the files. \nAdd the --plot argument to view surfaces with selected IDs")
 
-    plot = sys.argv.count("--plot") > 0
 
     print("Computing surfaces up to ID", max_ID)
     for i in range(min_ID, max_ID):
@@ -115,8 +115,14 @@ if __name__ == "__main__":
             res = cached_get_surfaces(i)
             if res is not None and plot:
                 simsopt.geo.plot(
-                    [res["lcfs"], res["middle_surf"], res["coil_surf"]],
-                    engine="plotly",
+                    [res["lcfs"]],
+                    # engine="plotly",
+                    show=False,
+                    close=True,
+                )
+                simsopt.geo.plot(
+                    [res["coil_surf"]],
+                    # engine="plotly",
                     show=True,
                     close=True,
                 )

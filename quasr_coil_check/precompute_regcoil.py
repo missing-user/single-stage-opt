@@ -4,6 +4,9 @@ import simsopt.geo
 import precompute_surfaces
 import subprocess
 from pathlib import Path
+import os
+if not "regcoil" in os.getenv("PATH"):
+    raise RuntimeError("The regcoil executable should be added to the PATH environment variable:\nexport PATH=\"$PATH:/home/<user>/regcoil\"")
 
 REGCOIL_IN_TMP_PATH = "regcoil_in.python_generated"
 REGCOIL_OUT_TMP_PATH = "regcoil_out.python_generated.nc"
@@ -56,7 +59,7 @@ def run_regcoil(
 """
     with open(REGCOIL_IN_TMP_PATH, "w") as f:
         f.write(input_string)
-    return subprocess.check_call(["../../regcoil/regcoil", REGCOIL_IN_TMP_PATH])
+    return subprocess.check_call(["regcoil", REGCOIL_IN_TMP_PATH])
 
 
 def compute_and_save(ID: int):
