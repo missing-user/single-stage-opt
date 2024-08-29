@@ -60,7 +60,9 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
     #     f.variables["bsupumnc"][:] *= magnetic_scaling
     #     f.variables["bsupvmnc"][:] *= magnetic_scaling
 
-    filename_template = f"{os.path.dirname(__file__)}/wout_d23p4_tm_reference_LgradBscaling.nc"
+    filename_template = (
+        f"{os.path.dirname(__file__)}/wout_d23p4_tm_reference_LgradBscaling.nc"
+    )
     os.system(f"cp {filename_template} {filename}")
 
     # Copy the file on disk with a new name, open with r+ and overwrite it.
@@ -75,7 +77,7 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
                 f"Dropping resolution when exporting surface to netcdf_file, due to my terrible, hacky implementation! Original: {surface.mpol, surface.ntor} now: {mpol, ntor}"
             )
         surface.change_resolution(mpol, ntor)
-        f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor:]  * 5
+        f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor:] * 5
         f.variables["zmns"][:] = -surface.zs.flatten()[surface.ntor:] * 5
 
         # Divided by old nfp multiplied by new nfp
@@ -95,9 +97,12 @@ def write_bdistribin(
     geometry_info={},
     mpol=12,
     ntor=12,
+    dataset_name="python_generated",
 ):
-    nu = 64
-    nv = 128
+    filename_out = "bdistrib_in." + dataset_name
+
+    nu = 96
+    nv = 96
 
     transfer_geometry = ""
     if geometry_option == 1:
@@ -160,7 +165,6 @@ def write_bdistribin(
   /
   """
 
-    filename_out = "bdistrib_in.python_generated"
     with open(filename_out, "w") as f:
         f.write(bdistribin)
     return filename_out
@@ -194,7 +198,7 @@ def read_nescin_file(filename: str, nfp) -> simsopt.geo.SurfaceRZFourier:
         numbers = line.split()
         m = int(numbers[0])
         n = int(numbers[1])
-        
+
         surf.set_rc(m, n, float(numbers[2]))
         surf.set_zs(m, n, float(numbers[3]))
 
@@ -260,6 +264,7 @@ def load_simsopt_up_to(max_ID):
 
 if __name__ == "__main__":
     import random
+
     random.seed(42)
     import os
 
@@ -272,7 +277,7 @@ if __name__ == "__main__":
         assert np.allclose(s1.zc, s2.zc)
         assert np.allclose(s1.rs, s2.rs)
         return True
-        
+
     surf = simsopt.geo.SurfaceRZFourier(5, ntor=5, mpol=3)
     assert compare_surfaces(surf, surf)  # Confirm comparison works at all
 
