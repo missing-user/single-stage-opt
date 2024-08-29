@@ -97,10 +97,8 @@ def write_bdistribin(
     geometry_info={},
     mpol=12,
     ntor=12,
-    dataset_name="python_generated",
+    dataset_path="bdistrib_in.python_generated",
 ):
-    filename_out = "bdistrib_in." + dataset_name
-
     nu = 96
     nv = 96
 
@@ -118,13 +116,13 @@ def write_bdistribin(
     a_outer  = {geometry_info["a_outer"]}
         """
     elif geometry_option == 2:
-        if "sep_middle" not in geometry_info:
-            geometry_info["sep_middle"] = geometry_info["sep_outer"] / 2
+        if "separation_middle" not in geometry_info:
+            geometry_info["separation_middle"] = geometry_info["separation_outer"] / 2
         transfer_geometry = f"""
     geometry_option_middle=2
-    sep_middle={geometry_info["sep_middle"]}
+    separation_middle={geometry_info["separation_middle"]}
     geometry_option_outer=2
-    sep_outer={geometry_info["sep_outer"]}
+    separation_outer={geometry_info["separation_outer"]}
         """
     elif geometry_option == 3:
         transfer_geometry = f"""
@@ -165,9 +163,9 @@ def write_bdistribin(
   /
   """
 
-    with open(filename_out, "w") as f:
+    with open(dataset_path, "w") as f:
         f.write(bdistribin)
-    return filename_out
+    return dataset_path
 
 
 # NESCIN
