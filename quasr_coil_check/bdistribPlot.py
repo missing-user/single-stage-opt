@@ -12,6 +12,53 @@ import math
 import plotly.express as px
 
 
+major_radius = 5.5
+paper_factor = 2 * np.pi**2 * major_radius * 1.25663706127e-6
+
+def plot_sequences(Bnormal_from_1_over_R_field_transfer, svd_s_inductance_plasma_middle,  svd_s_inductance_plasma_outer):
+    fig = plt.figure()
+    plt.subplot(121)
+    print("Bnormal_from_1_over_R_field_transfer", Bnormal_from_1_over_R_field_transfer.shape, svd_s_inductance_plasma_outer.shape)
+    eff_seq = Bnormal_from_1_over_R_field_transfer
+    fes_seq_mid = eff_seq / svd_s_inductance_plasma_middle
+    fes_seq_out = eff_seq / svd_s_inductance_plasma_outer
+    plt.semilogy(
+        eff_seq,
+        ".m",
+        label="Efficiency sequence (Bnormal_from_1_over_R_field_transfer)",
+    )
+    plt.semilogy(
+        fes_seq_mid,
+        ".",
+        label="Feasibility Sequence Middle (Bnormal_from_1_over_R_field_transfer/singular values inductance mid)",
+    )
+    plt.semilogy(
+        fes_seq_out,
+        ".g",
+        label="Feasibility Sequence Outer (Bnormal_from_1_over_R_field_transfer/singular values inductance out)",
+    )
+    plt.subplot(122)
+    plt.semilogy(
+        np.sort(eff_seq)[::-1],
+        ".m",
+        label="Efficiency sequence (Bnormal_from_1_over_R_field_transfer)",
+    )
+    plt.semilogy(
+        np.sort(fes_seq_mid)[::-1],
+        ".",
+        label="Feasibility Sequence Middle (Bnormal_from_1_over_R_field_transfer/singular values inductance mid)",
+    )
+    plt.semilogy(
+        np.sort(fes_seq_out)[::-1],
+        ".g",
+        label="Feasibility Sequence Outer (Bnormal_from_1_over_R_field_transfer/singular values inductance out)",
+    )
+    
+
+    plt.legend(fontsize="x-small", loc=3)
+    plt.title("(Fig 14.)")
+    plt.grid()
+
 def main(fname):
     def maximizeWindow():
         # Maximize window. The command for this depends on the backend.
@@ -146,8 +193,6 @@ def main(fname):
     fig = plt.figure(figureNum)
     fig.patch.set_facecolor("white")
 
-    major_radius = 5.5
-    paper_factor = 2 * np.pi**2 * major_radius * 1.25663706127e-6
 
     plt.plot(
         svd_s_inductance_middle_outer / paper_factor,
@@ -194,32 +239,8 @@ def main(fname):
     ########################################################
     # Fig14
     ########################################################
-
-    figureNum += 1
-    fig = plt.figure(figureNum)
-    plt.semilogy(
-        svd_s_inductance_plasma_outer / paper_factor,
-        ".m",
-        label="Efficiency sequence",
-    )
-    plt.semilogy(
-        Bnormal_from_const_v_coils_inductance,
-        ".r",
-        label="Bnormal_from_const_v_coils_inductance",
-    )
-    plt.semilogy(
-        Bnormal_from_const_v_coils_inductance / svd_s_inductance_plasma_outer,
-        ".g",
-        label="Feasibility Sequence Outer",
-    )
-    plt.semilogy(
-        Bnormal_from_const_v_coils_inductance / svd_s_inductance_plasma_middle,
-        ".",
-        label="Feasibility Sequence Middle",
-    )
-    plt.legend(fontsize="x-small", loc=3)
-    plt.title("(Fig 14.)")
-    plt.grid()
+    plot_sequences(Bnormal_from_1_over_R_field_transfer, svd_s_inductance_plasma_middle, svd_s_inductance_plasma_outer)
+    plt.show()
 
     ########################################################
     # check_orthogonality plot

@@ -34,7 +34,7 @@ if __name__ == "__main__":
     if os.path.dirname(__file__) == os.getcwd():
         raise RuntimeError(
             "This script should have been excecuted as a module:\npython -m replicate_lgradb.find_single_l"
-        )
+        )2
 
     for top, dirs, files in os.walk("replicate_lgradb/db"):
         for file in files:
@@ -43,5 +43,5 @@ if __name__ == "__main__":
                 path = os.path.join(top, file)
                 surfs, coils = simsopt.load(path)
                 bdistrib_for_surfaces(
-                    surfs[-1], 0.1, dataset_path="./replicate_lgradb/tmp/bdistrib_in."+file.removesuffix(".json")
+                    surfs[-1], 0.5, dataset_path="./replicate_lgradb/tmp/bdistrib_in."+file.removesuffix(".json")
                 )

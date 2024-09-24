@@ -54,7 +54,7 @@ def find_regcoil_distance(lcfs):
             k_infty = f.variables["max_K"][()]
             return k_infty[-1]
 
-    search_interval = np.array([1e-2, 0.35]) * 5
+    search_interval = np.array([3e-3, 0.35]) * 5
     search_initial_points = np.linspace(
         search_interval[0], search_interval[1], 5)
     kinftys = np.array(
@@ -77,8 +77,9 @@ def find_regcoil_distance(lcfs):
     print("scipy.optimize in interval", search_interval)
 
     opt_result = scipy.optimize.root_scalar(
-        lambda l: kinfty_at_regcoil_distance(float(l) - target_k),
-        bracket=search_interval.tolist(),  # tol=target_k * 1e-6, method="brentq"
+        lambda l: kinfty_at_regcoil_distance(float(l)) - target_k,
+        # bracket=search_interval.tolist(),  # tol=target_k * 1e-6, method="brentq"
+        x0=search_interval[0], x1=search_interval[1]
     )
     l_result = opt_result.root
     return l_result

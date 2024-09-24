@@ -33,8 +33,7 @@ def rate_of_efficiency_sequence(
         results = {}
         for B_key, svd_s_key in [
             (
-                "Bnormal_from_1_over_R_field_inductance",
-                "svd_s_inductance_plasma_middle",
+                "Bnormal_from_1_over_R_field_inductance","svd_s_inductance_plasma_middle",
             ),
             ("Bnormal_from_1_over_R_field_inductance", "svd_s_inductance_plasma_outer"),
             ("Bnormal_from_1_over_R_field_transfer", "svd_s_transferMatrix"),

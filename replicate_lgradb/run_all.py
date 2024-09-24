@@ -2,6 +2,7 @@ from . import find_single_l
 import os
 import simsopt
 
+all_results = {}
 for top, dirs, files in os.walk("replicate_lgradb/db"):
     for file in files:
         if os.path.splitext(file)[1] == ".json":
@@ -10,3 +11,10 @@ for top, dirs, files in os.walk("replicate_lgradb/db"):
             surfs, coils = simsopt.load(path)
             res = find_single_l.find_regcoil_distance(surfs[-1])
             print("result=", res)
+
+            all_results[file] = res
+
+print(all_results)
+import json
+with open("all_results.json", "w") as f:
+    json.dump(all_results, f, indent=4)
