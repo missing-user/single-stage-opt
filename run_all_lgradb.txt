@@ -1,3 +1,5 @@
+python -m replicate_lgradb.run_all | tee run_all_lgradb.log
+
 serial0018874.json
 kinfty_at 0.05 = inf
 9059076.14039851 <class 'numpy.float64'>
