@@ -5,6 +5,7 @@ import simsopt
 import simsopt.geo
 
 import dash
+import dash.dash_table
 import diskcache
 import dash_bootstrap_components as dbc
 import plotly.io as pio
@@ -48,6 +49,11 @@ app.layout = dash.html.Div(
                         dash.dcc.Dropdown(
                             id="y-axis-select",
                             multi=True,
+                            persistence=True,
+                        ),
+                        dash.dcc.Dropdown(
+                            id="color-axis-select",
+                            value="nfp",
                             persistence=True,
                         ),
                         dash.dcc.Checklist(
@@ -103,17 +109,24 @@ app.layout = dash.html.Div(
                     [
                         dash.dcc.Dropdown(
                             id="plasma-surface-dropdown",
-                            options=["lcfs", "bdistrib surfaces",
-                                     "regcoil surfaces"],
+                            options=[
+                                "lcfs",
+                                "bdistrib surfaces",
+                                "regcoil surfaces",
+                                "regcoil",
+                            ],
                             value="lcfs",
+                            persistence=True,
                         ),
-                        # dash.dcc.Loading(
-                        dash.dcc.Graph(id="plasma-surface-plot", figure={}),
-                        # ),
+                        dash.dcc.Loading(
+                            dash.dcc.Graph(
+                                id="plasma-surface-plot", figure={}),
+                        ),
                     ]
                 ),
             ]
         ),
+        dbc.Row(children=[], id="table-container"),
         dash.dcc.Store(id="df-store"),
     ],
     **{"data-bs-theme": "dark"},
@@ -137,16 +150,21 @@ app.layout = dash.html.Div(
 def load_results(set_progress, max_ID):
     max_ID = int(max_ID)
 
-    set_progress(("1", str(2 * max_ID)))
+    set_progress(("1", "6"))
     # simsopt_objs = bdistrib_io.load_simsopt_up_to(max_ID)
-    set_progress(("2", "5"))
+    set_progress(("2", "6"))
     df: pd.DataFrame = pd.read_pickle("QUASR_db/QA_database_26032024.pkl")
-    df["complexity"] = df["max_kappa"] + df["max_msc"]
+    df["QUASR complexity"] = df["max_kappa"] + df["max_msc"]
     df["log(qs error)"] = np.log(df["qs_error"])
     print("Raw dataset has", len(df), "entries")
+    try:
+        df = df[df["ID"].isin(np.loadtxt("IDs.txt", dtype=int))]
+    except FileNotFoundError:
+        df = df[df["ID"] <= max_ID]
+    print("Filtered down to ", len(df), "due to max_ID", max_ID)
 
     # df = bdistrib_util.sanitize_df_for_analysis(simsopt_objs)
-    set_progress(("3", "5"))
+    set_progress(("3", "6"))
 
     efficiencies = []
     for ID in range(max_ID):
@@ -156,21 +174,22 @@ def load_results(set_progress, max_ID):
                 bdistrib_path)
             results_dict["ID"] = ID
             efficiencies.append(results_dict)
-            set_progress((str(ID), str(2 * max_ID)))
     # df = df.merge(pd.DataFrame(efficiencies), left_on="ID", right_on="ID")
     print("Loaded", len(efficiencies), "efficiency sequences")
 
     # Compute coil complexity from coils
     def get_complexity(ID):
-        set_progress((str(max_ID + ID), str(2 * max_ID)))
-        compl = precompute_complexities.cached_get_complexity(ID)
-        compl.pop("nfp", None)
-        return compl
+        # set_progress((str(max_ID + ID), str(2 * max_ID)))
+        complexity = precompute_complexities.cached_get_complexity(ID)
+        complexity.pop("nfp", None)
+        return complexity
 
-    # complexity = [get_complexity(ID) for ID in df["ID"]]
-    # df = df.merge(pd.DataFrame(complexity), left_on="ID", right_on="ID")
-    # print("Loaded", len(complexity ), "complexities for analysis")
+    set_progress(("4", "6"))
+    complexity = [get_complexity(ID) for ID in df["ID"]]
+    df = df.merge(pd.DataFrame(complexity), left_on="ID", right_on="ID")
+    print("Loaded", len(complexity), "complexities for analysis")
 
+    set_progress(("5", "6"))
     regcoils = []
     for ID in df["ID"]:
         regcoil_path = bdistrib_io.get_file_path(ID, "regcoil")
@@ -181,6 +200,8 @@ def load_results(set_progress, max_ID):
                   right_on="ID").infer_objects()
     print("Loaded", len(regcoils), "regcoils for analysis")
     print("Finally", len(df), "datasets for analysis")
+    df = df[(df["lambda"] > 0.0) & (df["lambda"] < 1.0e199)]
+    set_progress(("6", "6"))
 
     return df.select_dtypes(exclude=["object"]).to_dict("records")
 
@@ -188,12 +209,13 @@ def load_results(set_progress, max_ID):
 @app.callback(
     dash.Output("x-axis-select", "options"),
     dash.Output("y-axis-select", "options"),
+    dash.Output("color-axis-select", "options"),
     dash.Input("df-store", "data"),
 )
 def dropdown(dfstore):
     df = pd.DataFrame(dfstore).convert_dtypes()
     axis_options = df.select_dtypes(include=["number"]).columns.tolist()
-    return axis_options, axis_options
+    return axis_options, axis_options, df.columns.tolist()
 
 
 @app.callback(dash.Output("correlation-plot", "figure"), dash.Input("df-store", "data"))
@@ -218,29 +240,39 @@ def select_correlation(clickdata):
     dash.Input("df-store", "data"),
     dash.Input("x-axis-select", "value"),
     dash.Input("y-axis-select", "value"),
+    dash.Input("color-axis-select", "value"),
     dash.Input("log-axis-select", "value"),
 )
-def scatterplot(dfstore, xscalar, yscalar, logatirhmic):
+def scatterplot(dfstore, xscalar, yscalar, colorscalar, logatirhmic):
     df = pd.DataFrame(dfstore).convert_dtypes()
-    df["nfp"] = df["nfp"].astype(str)
+    # Selectable continuous colors, automatically use categorical colors if suitable
+    coloring = colorscalar
+    if len(df[coloring].unique()) < 8:
+        df[coloring] = df[coloring].astype(str)
+
+    # fill hover data for click callbacks
+    my_hover_data = {"ID": True}
+    if "nc_per_hp" in df:
+        my_hover_data["nc_per_hp"] = True
+
     if len(yscalar) == 1:
         yscalar = yscalar[0]
         fig = px.scatter(
             df,
             xscalar,
             yscalar,
-            color="nfp",
+            color=coloring,
             log_x="xlog" in logatirhmic,
             log_y="ylog" in logatirhmic,
-            hover_data={"ID": True},
+            hover_data=my_hover_data,
             custom_data=["ID"],
         )
     else:
         fig = px.scatter_matrix(
             data_frame=df,
             dimensions=yscalar,
-            color="nfp",
-            hover_data={"ID": True},
+            color=coloring,
+            hover_data=my_hover_data,
         ).update_traces(diagonal_visible=True, showupperhalf=False)
     return fig.update_layout(clickmode="event", height=600)
 
@@ -295,6 +327,21 @@ def efficiency_sequence_plot(hover_data, selected_matrix, selected_sequence):
 
 
 @app.callback(
+    dash.Output("table-container", "children"),
+    dash.Input("metric-scatter-plot", "clickData"),
+    dash.Input("df-store", "data"),
+)
+def update_id_info(click_data, df_store):
+    if not click_data or not "customdata" in click_data["points"][0]:
+        return {}
+
+    result_id = int(click_data["points"][0]["customdata"][0])
+    df = pd.DataFrame(df_store)
+    df = df[df["ID"] == result_id]
+    return [dash.dash_table.DataTable(df.transpose().reset_index().to_dict("records"))]
+
+
+@app.callback(
     dash.Output("plasma-surface-plot", "figure"),
     dash.Input("metric-scatter-plot", "clickData"),
     dash.Input("plasma-surface-dropdown", "value"),
@@ -326,17 +373,25 @@ def display_hover_data(hover_data, selected_surface_type):
             engine="plotly",
             close=True,
         )
+        nc_per_hp = 4
+        if len(hover_data["points"][0]["customdata"]) > 0:
+            nc_per_hp = int(hover_data["points"][0]["customdata"][1])
         fig = regcoil_plot.plot_current_contours_surface(
             bdistrib_io.get_file_path(result_id, "regcoil"),
             -1,
             figure=fig,
-            num_coils_per_hp=4,
+            num_coils_per_hp=nc_per_hp,
+        )
+    elif selected_surface_type == "regcoil":
+        fig = regcoil_plot.plot_current_contours(
+            bdistrib_io.get_file_path(result_id, "regcoil"), -1
         )
 
     return fig.update_layout(  # type: ignore
         height=600,
         title=f"ID: {result_id}",
         scene=dict(aspectmode="data"),
+        uirevision="constant",
     )
 
 
