@@ -7,3 +7,4 @@ In the paper the authors validate the performance of the LgradB metric by compar
 where $B_0$ is the volume average magnetic field. It is unclear why the volume average would be chosen here instead of e.g. maximum field on axis.
 
 ## Python script to compare analytic derivation for B_volume average with numerical results of shaped stellerators
+`precise_qi_Bvolume.ipynb`
