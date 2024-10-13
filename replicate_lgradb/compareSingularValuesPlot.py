@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from scipy.stats import linregress
 import inspect
 import os
 import plotly.graph_objects as go
@@ -87,6 +88,39 @@ dataNames = [
 distance_sorted_ids = np.argsort(distances)
 
 
+# Make plot for efficiency decay rate vs REGCOIL distance
+
+
+def fit_exponential_rate(sequence):
+    x = np.linspace(0, 1, len(sequence))
+    fit = np.polyfit(x, np.log(sequence), 1)
+    return fit[0]
+
+
+plt.figure()
+for prop, propval in many_properties.items():
+    if prop.count("svd") == 0:
+        decay_rates = [fit_exponential_rate(np.abs(seq)) for seq in propval]
+        plt.plot(distances, decay_rates, ".", label=prop)
+
+        decay_rates = np.asarray(decay_rates)
+        distances = np.asarray(distances)
+
+        finite_mask = np.isfinite(distances)
+        decay_rates = decay_rates[finite_mask]
+        distances2 = distances[finite_mask]
+
+        reg = linregress(distances2, decay_rates)
+        plt.axline(
+            xy1=(0, reg.intercept),
+            slope=reg.slope,
+            color="k",
+            label=f"Linear fit {prop}: $R^2$ = {reg.rvalue:.2f}",
+        )
+plt.xlabel(r"$L_{REGCOIL}$")
+plt.ylabel("Rate of increase $\\gamma$")
+plt.legend()
+
 for prop, propval in many_properties.items():
     # Create a Plotly figure
     fig = go.Figure()
@@ -169,5 +203,6 @@ for prop, propval in many_properties.items():
     )
 
     maximizeWindow()
+
 
 plt.show()
