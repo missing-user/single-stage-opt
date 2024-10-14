@@ -4,11 +4,11 @@ import desc.grid
 import numpy as np
 import matplotlib.pyplot as plt
 
-eq_fam = desc.io.load("input.NAS.nv.n4.SS.iota43.Fake-ITER.01_output.h5")
-eq = eq_fam[-1]
-eq_fam2 = desc.io.load(
+eq_fam = desc.io.load(
     "input.NAS.nv.n4.SS.iota43.Fake-ITER_unperturbed.01_desc_output.h5"
 )
+eq = eq_fam[-1]
+eq_fam2 = desc.io.load("input.NAS.nv.n4.SS.iota43.Fake-ITER.01_output.h5")
 eq2 = eq_fam2[-1]
 
 desc.plotting.plot_comparison([eq, eq2])
@@ -32,12 +32,19 @@ Kvc = get_Kvc_lcfs(eq, lcfs_grid)
 Kvc2 = get_Kvc_lcfs(eq2, lcfs_grid)
 norm_of_diff = np.linalg.norm(Kvc - Kvc2, axis=-1)
 diff_of_norm = np.linalg.norm(Kvc, axis=-1) - np.linalg.norm(Kvc2, axis=-1)
-fig, axs = plt.subplots(2, 2, sharex=True, sharey=True)
-desc.plotting.plot_2d(eq, "K_vc", ax=axs[0, 0])
-desc.plotting.plot_2d(eq2, "K_vc", ax=axs[0, 1])
-axs[1, 0].contourf(norm_of_diff, cmap="jet", levels=100)
-axs[1, 0].set_title("norm of diff K_vc")
-axs[1, 1].contourf(diff_of_norm, cmap="jet", levels=100)
-axs[1, 1].set_title("diff of norm K_vc")
+
+# Plot grid with K_vc and the differences
+plt.figure()
+plt.subplot(2, 2, 1)
+desc.plotting.plot_2d(eq, "K_vc", ax=plt.gca())
+plt.subplot(2, 2, 2)
+desc.plotting.plot_2d(eq2, "K_vc", ax=plt.gca())
+plt.subplot(2, 2, 3)
+plt.contourf(norm_of_diff, cmap="jet", levels=100)
+plt.title(f"norm of diff K_vc {np.mean(norm_of_diff):.4e}")
+plt.subplot(2, 2, 4)
+plt.colorbar()
+plt.contourf(diff_of_norm, cmap="jet", levels=100)
+plt.title(f"diff of norm K_vc {np.linalg.norm(diff_of_norm):.4e}")
 plt.colorbar()
 plt.show()
