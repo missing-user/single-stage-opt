@@ -150,8 +150,9 @@ app.layout = dash.html.Div(
 def load_results(set_progress, max_ID):
     max_ID = int(max_ID)
 
-    set_progress(("1", "6"))
     # simsopt_objs = bdistrib_io.load_simsopt_up_to(max_ID)
+    # df = bdistrib_util.sanitize_df_for_analysis(simsopt_objs)
+    set_progress(("1", "6"))
     set_progress(("2", "6"))
     df: pd.DataFrame = pd.read_pickle("QUASR_db/QA_database_26032024.pkl")
     df["QUASR complexity"] = df["max_kappa"] + df["max_msc"]
@@ -163,7 +164,6 @@ def load_results(set_progress, max_ID):
         df = df[df["ID"] <= max_ID]
     print("Filtered down to ", len(df), "due to max_ID", max_ID)
 
-    # df = bdistrib_util.sanitize_df_for_analysis(simsopt_objs)
     set_progress(("3", "6"))
 
     efficiencies = []
@@ -174,33 +174,37 @@ def load_results(set_progress, max_ID):
                 bdistrib_path)
             results_dict["ID"] = ID
             efficiencies.append(results_dict)
-    # df = df.merge(pd.DataFrame(efficiencies), left_on="ID", right_on="ID")
+    df = df.merge(pd.DataFrame(efficiencies), left_on="ID", right_on="ID")
     print("Loaded", len(efficiencies), "efficiency sequences")
+    print(df.columns, len(df))
 
     # Compute coil complexity from coils
     def get_complexity(ID):
         # set_progress((str(max_ID + ID), str(2 * max_ID)))
         complexity = precompute_complexities.cached_get_complexity(ID)
         complexity.pop("nfp", None)
+        complexity["ID"] = ID
         return complexity
 
     set_progress(("4", "6"))
     complexity = [get_complexity(ID) for ID in df["ID"]]
     df = df.merge(pd.DataFrame(complexity), left_on="ID", right_on="ID")
     print("Loaded", len(complexity), "complexities for analysis")
+    print(df.columns)
 
     set_progress(("5", "6"))
-    regcoils = []
-    for ID in df["ID"]:
-        regcoil_path = bdistrib_io.get_file_path(ID, "regcoil")
-        if os.path.exists(regcoil_path):
-            results_dict = precompute_regcoil.get_regcoil_metrics(ID)
-            regcoils.append(results_dict)
-    df = df.merge(pd.DataFrame(regcoils), left_on="ID",
-                  right_on="ID").infer_objects()
-    print("Loaded", len(regcoils), "regcoils for analysis")
-    print("Finally", len(df), "datasets for analysis")
-    df = df[(df["lambda"] > 0.0) & (df["lambda"] < 1.0e199)]
+    # regcoils = []
+    # for ID in df["ID"]:
+    #     regcoil_path = bdistrib_io.get_file_path(ID, "regcoil")
+    #     if os.path.exists(regcoil_path):
+    #         results_dict = precompute_regcoil.get_regcoil_metrics(ID)
+    #         results_dict["ID"] = ID
+    #         regcoils.append(results_dict)
+    # df = df.merge(pd.DataFrame(regcoils), left_on="ID", right_on="ID").infer_objects()
+    # print("Loaded", len(regcoils), "regcoils for analysis")
+    # print("Finally", len(df), "datasets for analysis")
+    # print(df.columns)
+    # df = df[(df["lambda"] > 0.0) & (df["lambda"] < 1.0e199)]
     set_progress(("6", "6"))
 
     return df.select_dtypes(exclude=["object"]).to_dict("records")
@@ -221,6 +225,33 @@ def dropdown(dfstore):
 @app.callback(dash.Output("correlation-plot", "figure"), dash.Input("df-store", "data"))
 def correlationplot(dfstore):
     df = pd.DataFrame(dfstore).convert_dtypes()
+    df = df.loc[
+        :,
+        ~df.columns.isin(
+            [
+                "Jccdist",
+                "total_coil_length_threshold",
+                "mean_iota",
+                "max_kappa",
+                "max_msc",
+                "nc_per_hp",
+                "nfp",
+                "aspect_ratio",
+                "ID",
+                "minor_radius",
+                "Nsurfaces",
+                "volume",
+                "n_coils",
+                "qs_error",
+                "log(qs error)",
+                "feasibility middle",
+                "feasibility outer",
+                "total_coil_length",
+                "feasibility transferMatrix",
+            ]
+        ),
+    ]
+    df = df.reindex(columns=sorted(df.columns))
     return px.imshow(df.corr(), height=600)
 
 

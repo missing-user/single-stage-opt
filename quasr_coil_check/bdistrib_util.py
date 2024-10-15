@@ -33,11 +33,14 @@ def rate_of_efficiency_sequence(
         results = {}
         for B_key, svd_s_key in [
             (
-                "Bnormal_from_1_over_R_field_inductance",
+                "Bnormal_from_const_v_coils_inductance",
                 "svd_s_inductance_plasma_middle",
             ),
-            ("Bnormal_from_1_over_R_field_inductance", "svd_s_inductance_plasma_outer"),
-            ("Bnormal_from_1_over_R_field_transfer", "svd_s_transferMatrix"),
+            ("Bnormal_from_const_v_coils_inductance",
+             "svd_s_inductance_plasma_outer"),
+            ("Bnormal_from_const_v_coils_transfer", "svd_s_transferMatrix"),
+            # Bnormal_from_1_over_R_field_inductance
+            # Bnormal_from_1_over_R_field_transfer
             # "Bnormal_from_const_v_coils",
             # "Bnormal_from_const_v_coils_inductance",
             # "Bnormal_from_const_v_coils_transfer",
@@ -50,7 +53,8 @@ def rate_of_efficiency_sequence(
             efficiency_seq = np.abs(sequence)
             feasibility_seq = efficiency_seq / svd_s
             eff_fit = fit_exponential_rate(efficiency_seq[:max_index_for_fit])
-            feas_fit = fit_exponential_rate(feasibility_seq[:max_index_for_fit])
+            feas_fit = fit_exponential_rate(
+                feasibility_seq[:max_index_for_fit])
 
             eff_key = "efficiency " + svd_s_key.split("_")[-1]
             feas_key = "feasibility " + svd_s_key.split("_")[-1]
@@ -62,7 +66,8 @@ def rate_of_efficiency_sequence(
                 )
                 results[feas_key] = feasibility_seq
                 results[feas_key + " (fit)"] = np.exp(
-                    np.polyval(feas_fit, x=np.linspace(0, 1, max_index_for_fit))
+                    np.polyval(feas_fit, x=np.linspace(
+                        0, 1, max_index_for_fit))
                 )
             else:
                 results[eff_key] = eff_fit[0]
@@ -73,17 +78,20 @@ def rate_of_efficiency_sequence(
 def plot_bdistrib_surfaces(bdistrib_output_path: str, figure=None) -> go.Figure:
     with netcdf_file(bdistrib_output_path, "r", mmap=False) as f:
         # Necessary casts to fix endianness issues between netcdf and numpy
-        r_plasma = np.ascontiguousarray(f.variables["r_plasma"][()]).astype(float)
-        r_middle = np.ascontiguousarray(f.variables["r_middle"][()]).astype(float)
-        r_outer = np.ascontiguousarray(f.variables["r_outer"][()]).astype(float)
+        r_plasma = np.ascontiguousarray(
+            f.variables["r_plasma"][()]).astype(float)
+        r_middle = np.ascontiguousarray(
+            f.variables["r_middle"][()]).astype(float)
+        r_outer = np.ascontiguousarray(
+            f.variables["r_outer"][()]).astype(float)
 
         def add_surface_trace(fig: go.Figure, r_data, fraction, name, **kwargs):
             fraction = 1.0 - fraction
             fig.add_trace(
                 go.Surface(
-                    x=r_data[int(r_data.shape[0] * fraction) :, :, 0],
-                    y=r_data[int(r_data.shape[0] * fraction) :, :, 1],
-                    z=r_data[int(r_data.shape[0] * fraction) :, :, 2],
+                    x=r_data[int(r_data.shape[0] * fraction):, :, 0],
+                    y=r_data[int(r_data.shape[0] * fraction):, :, 1],
+                    z=r_data[int(r_data.shape[0] * fraction):, :, 2],
                     name=name,
                     **kwargs
                 )

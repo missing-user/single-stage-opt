@@ -8,8 +8,20 @@ import json
 
 from skimage.filters import window
 
+from scipy.spatial.distance import cdist
 from pathlib import Path
 import precompute_surfaces
+
+
+def coil_surf_distance(curves, lcfs) -> np.ndarray:
+    pointcloud1 = lcfs.gamma().reshape((-1, 3))
+    distances = [np.min(cdist(pointcloud1, c.gamma()), axis=0) for c in curves]
+    return np.array(distances).T
+
+
+def compute_coil_surf_dist(coils, lcfs):
+    curves = [c.curve for c in coils]
+    return coil_surf_distance(curves, lcfs)
 
 
 def compute_complexity(ID):
@@ -51,10 +63,11 @@ def compute_complexity(ID):
         "complexity": float(JF.J()),  # type: ignore
         "Jls": float(Jls.J()),  # type: ignore
         "Jccdist": float(Jccdist.J()),  # type: ignore
+        # type: ignore
+        "coil surface dist": float(np.min(compute_coil_surf_dist(coils, lcfs))),
         "Jcs": float(Jcs.J()),  # type: ignore
         "Jmscs": float(Jmscs.J()),  # type: ignore
         "nfp": int(lcfs.nfp),
-        "volume": int(lcfs.volume()),
         "n_coils": len(coils),
     }
 
@@ -101,7 +114,7 @@ def cached_get_complexity(ID):
     if Path(comppath).exists():
         with open(bdistrib_io.get_file_path(ID, "complexity")) as f:
             j_complexity = json.load(f)
-        possibly_add_spectral_power(j_complexity, ID, comppath)
+        # possibly_add_spectral_power(j_complexity, ID, comppath)
     else:
         j_complexity = compute_and_store_complexity(ID)
         possibly_add_spectral_power(j_complexity, ID, comppath)
@@ -112,8 +125,9 @@ def cached_get_complexity(ID):
 if __name__ == "__main__":
     import sys
 
+    min_ID = 0
+    max_ID = 0
     if len(sys.argv) == 2:
-        min_ID = 0
         max_ID = int(sys.argv[1])
     elif len(sys.argv) == 3:
         min_ID = int(sys.argv[1])
