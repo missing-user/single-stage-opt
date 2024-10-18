@@ -6,6 +6,9 @@ MU0 = 4e-7 * np.pi
 
 
 def generate_non_perturbed_nml(input_nml):
+  # l:   (\d+)	m: (.+)	n: ([^0]+)	R1 = (.+)	Z1 =  (.+)
+  # l:   (\d+)	m: ([^0]+)	n: (.+)	R1 = (.+)	Z1 =  (.+)
+  # l:   $1	m: $2	n: $3	R1 = 0.00000000E+00	Z1 =  0.00000000E+00
     """Parse VMEC input namelist, set all toroidal modes to zero, write the output to a new namelist called <input name>.unperturbed"""
     with open(input_nml, "r") as f:
         txt = f.readlines()
