@@ -19,14 +19,11 @@ middle_surface.scale(1.5)
 outers_surface.change_resolution(outers_surface.mpol, 0)
 outers_surface.scale(1.8)
 
-print(middle_surface.minor_radius(), outers_surface.minor_radius())
-
-
 subprocess.check_call(
     [
         "../bdistrib/bdistrib",
         bdistrib_io.write_bdistribin(
-            "hybrid_tokamak/wout_NAS.nv.n4.SS.iota43.Fake-ITER.01_000_000000.nc",
+            "wout_NAS.nv.n4.SS.iota43.Fake-ITER.01_000_000000.nc",
             geometry_option=1,
             geometry_info={
                 "R0": middle_surface.major_radius(),
@@ -35,7 +32,8 @@ subprocess.check_call(
             },
             dataset_path="hybrid_tokamak/bdistrib_in.hybrid_tokamak",
         ),
-    ]
+    ],
+    cwd="hybrid_tokamak"
 )
 # import matplotlib.pyplot as plt
 # import numpy as np

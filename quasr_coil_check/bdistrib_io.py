@@ -165,7 +165,8 @@ def write_bdistribin(
 
     with open(dataset_path, "w") as f:
         f.write(bdistribin)
-    return dataset_path
+
+    return os.path.basename(dataset_path)
 
 
 # NESCIN
