@@ -1,0 +1,38 @@
+&bdistrib
+    transfer_matrix_option = 1
+
+    nu_plasma=96
+    nu_middle=96
+    nu_outer =96
+
+    nv_plasma=96
+    nv_middle=96
+    nv_outer =96
+
+    ! This run is not well resolved at this resolution, but it is enough for testing.
+    mpol_plasma = 12
+    mpol_middle = 12
+    mpol_outer  = 12
+
+    ntor_plasma = 12
+    ntor_middle = 12
+    ntor_outer  = 12
+
+    geometry_option_plasma = 2
+    wout_filename='wout_NAS.nv.n4.SS.iota43.Fake-ITER.01_000_000000.nc'
+
+
+    geometry_option_middle=1
+    R0_middle = 0.8428071003447353
+    a_middle  = 0.6324739606473669
+    geometry_option_outer=1
+    R0_outer = 0.8428071003447353
+    a_outer  = 0.7589687527768405
+
+    basis_option_plasma = 1
+    basis_option_outer = 1
+    symmetry_option = 1 ! The hybrid tokamak field does not confine to sin symmetry!
+    pseudoinverse_thresholds = 1e-14
+    save_level = 0
+    n_singular_vectors_to_save = 256
+  /
