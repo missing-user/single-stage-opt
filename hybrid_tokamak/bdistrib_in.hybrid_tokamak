@@ -23,16 +23,14 @@
 
 
     geometry_option_middle=1
-    R0_middle = 0.8428071003447353
-    a_middle  = 0.6324739606473669
+    R0_middle = 1.0322236740062423
+    a_middle  = 0.632473960647367
     geometry_option_outer=1
-    R0_outer = 0.8428071003447353
+    R0_outer = 1.0322236740062423
     a_outer  = 0.7589687527768405
 
-    basis_option_plasma = 1
-    basis_option_outer = 1
-    symmetry_option = 1 ! The hybrid tokamak field does not confine to sin symmetry!
-    pseudoinverse_thresholds = 1e-14
-    save_level = 0
-    n_singular_vectors_to_save = 256
+
+    pseudoinverse_thresholds = 1e-12
+
+    n_singular_vectors_to_save = 16
   /

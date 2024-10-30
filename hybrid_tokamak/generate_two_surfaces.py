@@ -1,6 +1,8 @@
 import simsopt
 import simsopt.geo
+import numpy as np
 from quasr_coil_check import bdistrib_io
+from quasr_coil_check import precompute_bdistrib
 import subprocess
 
 hybrid_surface = simsopt.geo.SurfaceRZFourier.from_vmec_input(
@@ -15,9 +17,22 @@ outers_surface = simsopt.geo.SurfaceRZFourier.from_vmec_input(
 )
 middle_surface.change_resolution(middle_surface.mpol, 0)
 middle_surface.scale(1.5)
+middle_surface.set_rc(0, 0, middle_surface.get_rc(0, 0) / np.sqrt(1.5))
 
 outers_surface.change_resolution(outers_surface.mpol, 0)
 outers_surface.scale(1.8)
+outers_surface.set_rc(0, 0, outers_surface.get_rc(0, 0) / np.sqrt(1.8))
+
+
+precompute_bdistrib.bdistrib_for_surfaces(
+    hybrid_surface,
+    middle_surface,
+    outers_surface,
+    cwd="hybrid_tokamak",
+)
+# scp hybrid_tokamak/nescin.osurf juph@cluster:/home/IPP-HGW/juph/regcoil/
+# scp hybrid_tokamak/nescin.msurf juph@cluster:/home/IPP-HGW/juph/regcoil/
+# scp hybrid_tokamak/wout_NAS.nv.n4.SS.iota43.Fake-ITER.01_000_000000.nc juph@cluster:/home/IPP-HGW/juph/regcoil/
 
 subprocess.check_call(
     [
@@ -33,7 +48,7 @@ subprocess.check_call(
             dataset_path="hybrid_tokamak/bdistrib_in.hybrid_tokamak",
         ),
     ],
-    cwd="hybrid_tokamak"
+    cwd="hybrid_tokamak",
 )
 
 

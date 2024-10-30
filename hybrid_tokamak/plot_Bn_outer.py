@@ -1,12 +1,7 @@
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
 import numpy as np
 from scipy.io import netcdf
-from scipy.interpolate import interp1d
 import sys
-import math
 
 if len(sys.argv) != 2:
     print("Error! You must specify 1 argument: the bdistrib_out.XXX.nc file.")
@@ -78,6 +73,7 @@ Bnormal_plasma_basis_functions_uv = (
 )
 
 plt.contourf(Bnormal_plasma_basis_functions_uv, 100)
+plt.title("B field due to constant-v coils\n(from basis decomposition)")
 plt.colorbar()
 
 plt.figure()
@@ -101,17 +97,18 @@ plt.plot(Bnormal_on_outer)
 Bnormal_on_outer = np.linalg.lstsq(
     transferMatrix.T, Bnormal_from_const_v_coils, rcond=None
 )[0]
-Bnormal_outer_basis_functions_uv = (
-    np.reshape((basis_functions_outer.T @ Bnormal_on_outer),
-               (nu_outer, nv_outer)).T
-    * 1e-3
-)
+Bnormal_outer_basis_functions_uv = np.reshape(
+    (basis_functions_outer.T @ Bnormal_on_outer), (nu_outer, nv_outer)
+).T
 plt.subplot(122)
 plt.contourf(Bnormal_outer_basis_functions_uv, 100)
 plt.colorbar()
+plt.title("$B_{outer} \\cdot n$")
 
 
 plt.matshow(transferMatrix)
+plt.title(f"Transfer Matrix (cond: {np.linalg.cond(transferMatrix):.4e})")
+plt.colorbar()
 
 # Why does the basis transform smooth out B.n so much???
 plt.matshow(
@@ -121,5 +118,7 @@ plt.matshow(
         @ Bnormal_from_const_v_coils_uv.flatten()
     ).reshape(nu_plasma, nv_plasma)
 )
+plt.colorbar()
+plt.title("$U^T U B \\cdot n$")
 
 plt.show()

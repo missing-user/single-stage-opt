@@ -1,0 +1,31 @@
+&regcoil_nml
+  general_option = 5 ! Check if target is attainable first
+  Nlambda = 8
+  ntheta_coil = 128
+  nzeta_coil = 128
+  ntheta_plasma = 128
+  nzeta_plasma = 128
+  mpol_potential = 16
+  ntor_potential = 16
+  ! target_option = "rms_Bnormal_normalized"
+  ! target_value = 0.02
+
+  geometry_option_plasma = 2
+  wout_filename='./wout_NAS.nv.n4.SS.iota43.Fake-ITER.01_000_000000.nc'
+
+  geometry_option_middle=3
+  nescin_filename_middle = './nescin.msurf'
+  geometry_option_coil=3
+  nescin_filename = './nescin.osurf'
+
+  ! geometry_option_middle=2
+  ! separation_middle = 0.1
+  ! geometry_option_coil=2
+  ! separation = 0.2
+
+
+  load_bnorm = .true.
+  bnorm_filename = "./bnorm.NAS.nv.n4.SS.iota43.Fake-ITER.01_000_000000"
+
+  symmetry_option = 3
+/
