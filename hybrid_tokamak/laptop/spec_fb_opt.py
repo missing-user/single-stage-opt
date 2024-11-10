@@ -5,12 +5,18 @@ from simsopt import geo
 from simsopt.util import MpiPartition
 import matplotlib.pyplot as plt
 import numpy as np
+import warnings
 
 mpi = MpiPartition(ngroups=4)
 
 
 equil = Spec("hybrid_tokamak/laptop/hybrid_tokamak_vacuum.sp")
 assert equil.lib.inputlist.lfreebound, "SPEC must be in Freeboundary mode"
+if equil.lib.inputlist.linitialize != 0:
+    warnings.warn(
+        "I would recommend setting linitialize to 1 or a negative value, "
+        "instead of manually manually initializing the surfaces."
+    )
 
 Bn = equil.normal_field  # This is our new fancy-pants degree of freedom :)
 
@@ -20,48 +26,6 @@ msurf.scale(1.5)
 msurf.change_resolution(equil.lib.inputlist.mpol, equil.lib.inputlist.ntor)
 
 equil.normal_field.surface = msurf
-# m = equil.array_translator(msurf.rc).as_spec.shape[0]
-# n = equil.array_translator(msurf.rc).as_spec.shape[1]
-# xm, xn = np.meshgrid(np.arange(m), np.arange(n))
-# initial_guess = np.vstack(
-#     (
-#         equil.array_translator(msurf.rc).as_spec.flatten(),
-#         equil.array_translator(msurf.zs).as_spec.flatten(),
-#         equil.array_translator(msurf.rs).as_spec.flatten(),
-#         equil.array_translator(msurf.zc).as_spec.flatten(),
-#     )
-# ).T
-
-#     mn = np.column_stack((xm.flatten(), xn.flatten()))
-#     initial_guess = np.hstack((mn, initial_guess))
-#     print("initial_guess.shape", initial_guess.shape)
-#     fmt = ["%d", "%d"] + ["%f"] * 4 * equil.lib.inputlist.nvol
-#     np.savetxt(f, initial_guess, fmt=fmt)
-# msurf.m
-
-with open("hybrid_tokamak/laptop/hybrid_tokamak_vacuum.sp", "a") as f:
-    f.write("\n")
-    surface = equil.boundary
-    for m in range(surface.mpol + 1):
-        nmin = -surface.ntor
-        if m == 0:
-            nmin = 0
-        for n in range(nmin, surface.ntor + 1):
-            line = f"   {m:5d}    {n:5d} "
-
-            rc = surface.get_rc(m, n)
-            zs = surface.get_zs(m, n)
-            rs = 0.0
-            zc = 0.0
-            if not surface.stellsym:
-                rs = surface.get_rs(m, n)
-                zc = surface.get_zc(m, n)
-
-            # Interpolate the initial guesses for the Fourier coefficients linearly from the outermost wall until the axis
-            for l in range(equil.lib.inputlist.nvol):
-                scale = 1.0 - l / equil.lib.inputlist.nvol
-                line += f" {rc*scale:22.15E} {zs*scale:22.15E} {rs*scale:22.15E} {zc*scale:22.15E}"
-            f.write(line + "\n")
 
 print(equil.dof_names)
 print(Bn)
