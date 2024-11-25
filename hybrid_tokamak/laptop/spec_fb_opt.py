@@ -1,46 +1,103 @@
-from simsopt.mhd import Spec
+from simsopt import mhd
+from simsopt import geo
 from simsopt.objectives import LeastSquaresProblem
 from simsopt.solve import least_squares_serial_solve, least_squares_mpi_solve
-from simsopt import geo
-from simsopt.util import MpiPartition
 import matplotlib.pyplot as plt
 import numpy as np
-import warnings
+from simsopt.util import MpiPartition
 
-mpi = MpiPartition(ngroups=4)
+import logging
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
 
-
-equil = Spec("hybrid_tokamak/laptop/hybrid_tokamak_vacuum.sp")
+# equil = mhd.Spec.default_freeboundary(copy_to_pwd=True)
+equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", verbose=True)
+mpi = equil.mpi
 assert equil.lib.inputlist.lfreebound, "SPEC must be in Freeboundary mode"
-if equil.lib.inputlist.linitialize != 0:
-    warnings.warn(
-        "I would recommend setting linitialize to 1 or a negative value, "
-        "instead of manually manually initializing the surfaces."
-    )
+
+inputlist = equil.lib.inputlist
+# inputlist.lautoinitbn = True
+# inputlist.mfreeits = 1
+
+# To allow for poincare tracing
+inputlist.nppts = 64
+nvol = equil.nvol
+for ivol in range(nvol):
+    inputlist.nptrj[ivol] = 8
+
+# inputlist.mpol = 7
+# inputlist.ntor = 7
+
+# Solve for iota and oita
+inputlist.lconstraint = 1
+
+# def change_nvol(new_nvol):
+#     inputlist.nvol = new_nvol
+#     equil.nvol = new_nvol
+#     equil.mvol = new_nvol + int(equil.freebound)
+#     inputlist.linitialize = 1
+#     equil.initial_guess = None
+# change_nvol(2)
 
 Bn = equil.normal_field  # This is our new fancy-pants degree of freedom :)
+for lvol in range(nvol):
+    inputlist.lrad[lvol] = 6
+Bn.surface.set_rc(1,1,0)
+Bn.surface.set_zs(0,1,0)
+Bn.surface.set_zs(1,1,0)
+Bn.surface.set_zs(0,1,0)
+if mpi.proc0_world:
+    Bn.surface.plot()
+    equil.boundary.plot()
+    plt.imshow(Bn.get_vns_asarray())
+    plt.show()
 
-msurf = geo.SurfaceRZFourier.from_vmec_input("hybrid_tokamak/input.hybrid_tokamak")
-msurf.change_resolution(msurf.mpol, 0)
-msurf.scale(1.5)
-msurf.change_resolution(equil.lib.inputlist.mpol, equil.lib.inputlist.ntor)
+equil.run()
+# Bn.surface.change_resolution(1,1)
 
-equil.normal_field.surface = msurf
 
-print(equil.dof_names)
-print(Bn)
-Bn.fix_all()
-Bn.unfix("vns(0,1)")
-
-desired_volume = 3.32
-volume_weight = 1
-term1 = (equil.volume, desired_volume, volume_weight)
-
-desired_iota = -4.26895384431299e-01
+desired_iota = .426895384431299
 iota_weight = 1
-term2 = (equil.iota, desired_iota, iota_weight)
+if mpi.proc0_world:
+    # Run the final iteration with a higher poincare resolution
+    # equil.tflux_profile.fix_all()
+    # equil.iota_profile.fix_all()
+    # equil.oita_profile.fix_all()
 
-prob = LeastSquaresProblem.from_tuples([term1, term2])
+
+    Bn.surface.plot()
+    equil.boundary.plot()
+    plt.imshow(Bn.get_vns_asarray())
+    plt.show()
+
+    print(equil.dof_names)
+    print("B.n", Bn)
+    Bn.fix_all()
+    mmax = nmax = 1
+    Bn.fixed_range(0, mmax, -nmax, nmax, False)
+    equil.results.plot_poincare()
+    equil.results.plot_kam_surface()
+    
+
+
+    # iota = p / q
+    p = 8
+    q = 5
+    residue1 = mhd.Residue(equil, p, q, s_guess=0.65)
+    print("iota", equil.iota())
+    for p,q in [(8,5), (-8,5), (10,5), (7,5), (-7,5), (9,5), (-9,5)]:
+        try:
+            print("Compute residue for p = ", p, ", q = ", q)
+            print(mhd.Residue(equil, p, q, s_guess=0.65).J())
+        except:
+            print("Failed to compute residue for p = ", p, ", q = ", q)
+    exit()
+
+prob = LeastSquaresProblem.from_tuples(
+    [
+        (equil.iota, desired_iota, iota_weight),
+    ]
+)
 
 if mpi is None:
     least_squares_serial_solve(prob)
@@ -54,10 +111,26 @@ print(" iota on axis = ", equil.iota())
 print(" objective function = ", prob.objective())
 
 # Run the final iteration with a higher poincare resolution
-# equil.lib.inputlist.nptrj = 16
-# equil.lib.inputlist.nppts = 1000
-# equil.lib.inputlist.odetol = 1e-8
-# equil.run()
-equil.results.plot_poincare()
-equil.results.plot_iota()
-equil.results.plot_kam_surface()
+equil.lib.inputlist.nptrj = 16
+equil.lib.inputlist.nppts = 128
+equil.lib.inputlist.odetol = 1e-8
+equil.run()
+
+if mpi.proc0_world:
+    equil.results.plot_poincare()
+    equil.results.plot_iota()
+    equil.results.plot_pressure()
+    equil.results.plot_kam_surface()
+    equil.results.plot_modB()
+
+    plt.figure()
+    j_dot_B, _, _ = equil.results.get_surface_current_density(1)
+    plt.subplot(1, 2, 1)
+    plt.imshow(j_dot_B[0, 0], origin="lower")
+    plt.subplot(1, 2, 2)
+    plt.imshow(j_dot_B[0, 1], origin="lower")
+    plt.title("Surface current density")
+
+    equil.boundary.plot()
+
+    plt.show()

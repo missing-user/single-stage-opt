@@ -3,6 +3,7 @@ from simsopt import mhd
 from simsopt import configs #configs.zoo.get()
 
 from simsopt import objectives
+import simsopt.objectives
 from simsopt.solve import least_squares_serial_solve, least_squares_mpi_solve
 from simsopt import geo
 from simsopt.util import MpiPartition
@@ -11,33 +12,44 @@ import numpy as np
 
 import logging
 logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
+# logging.getLogger().setLevel(logging.)
 
-mpi = MpiPartition(4)
-equil = mhd.Spec(
-    "hybrid_tokamak/laptop/nfp2_QA_iota0.4.sp",
-    mpi,
-    verbose=False,
-    keep_all_files=True
-)
-# equil.mpol = 7
-# equil.ntor = 7
+# equil = mhd.Spec(
+#     # "hybrid_tokamak/laptop/nfp2_QA_iota0.4.sp",
+#     # "hybrid_tokamak/laptop/w7x.sp",
+#     "hybrid_tokamak/laptop/defaults.sp",
+#     verbose=True,
+#     keep_all_files=False
+# )
+equil = mhd.Spec.default_fixedboundary()
+# equil.nfp = 3
+# equil.boundary.nfp = 3
+# equil.inputlist.nfp = 3
+equil.inputlist.nptrj = 4
+equil.inputlist.nppts = 16
 assert not equil.lib.inputlist.lfreebound, "SPEC must be in Fixed boundary mode"
 
-surf = geo.SurfaceRZFourier.from_vmec_input("hybrid_tokamak/input.hybrid_tokamak")
-msurf = geo.SurfaceRZFourier.from_vmec_input(
-    "hybrid_tokamak/input.hybrid_tokamak", range="field period"
-)
-msurf.change_resolution(msurf.mpol, 0)
-msurf.scale(1.5)
+# surf = geo.SurfaceRZFourier.from_vmec_input("hybrid_tokamak/input.hybrid_tokamak")
+# msurf = geo.SurfaceRZFourier.from_vmec_input(
+#     "hybrid_tokamak/input.hybrid_tokamak", range="field period"
+# )
+# vmec = mhd.Vmec("../simsopt/examples/3_Advanced/inputs/input.nfp4_QH_warm_start") 
+# vmec = mhd.Vmec("../../Downloads/20210610-02-optimization_for_good_surfaces_and_quasisymmetry_zenodo.20210613/20210610-02-optimization_for_good_surfaces_and_quasisymmetry_zenodo/20210530-01-015-combined_vmec_spec_optimization/input.nfp2_QA_iota0.4") 
+# print("Vmec Vacuum well: ", vmec.vacuum_well())
+# equil.boundary = vmec.boundary 
+
+# msurf.change_resolution(msurf.mpol, 0)
+# msurf.scale(1.5)
 # equil.boundary = surf
 surf = equil.boundary
-mmax = 3
-nmax = 3
+mmax = 2
+nmax = 2
 surf.fix_all()
+logging.info(equil.full_dof_names)
+
 surf.fixed_range(0, mmax, -nmax, nmax, False)
 surf.fix("rc(0,0)")  # Major radius
-print(equil.dof_names)
+logging.info(equil.dof_names)
 
 from fractions import Fraction
 
@@ -83,10 +95,11 @@ def find_simples_fractions(x: Fraction, y: Fraction, levels: int = 0) -> list[Fr
 
 fracs = sorted(
     find_simples_fractions(Fraction(-0.38), Fraction(-0.5), 1),
+    # find_simples_fractions(Fraction(-0.89), Fraction(-0.98), 1),
     key=lambda x: x.denominator,
 )
 qs = mhd.QuasisymmetryRatioResidualSpec(
-    equil, surfaces=np.linspace(0.1, 1, 6), helicity_m=1, helicity_n=0
+    equil, surfaces=np.linspace(0.1, 1, 4), helicity_m=1, helicity_n=1, ntheta=32, nphi=32
 )
 
 # vac_well = mhd.VacuumWell(equil, surfaces=np.linspace(0, 1, 11))
@@ -104,10 +117,12 @@ qs = mhd.QuasisymmetryRatioResidualSpec(
 
 # These don't have __self__ and throw an error
 def iota_average():
-    return np.mean(equil.results.transform.fiota[1, :])
+    return np.mean(equil.results.transform.fiota[1, equil.results.poincare.success==1])
 
 def iota_edge(equil):
-    equil.run() 
+    equil.run()
+    if equil.results.poincare.success[-1] != 1:
+        raise simsopt._core.ObjectiveFailure("iota_edge failed, could not find iota values")
     return equil.results.transform.fiota[1, -1]
 iota_edge_target = simsopt.make_optimizable(iota_edge, equil) 
 
@@ -119,13 +134,13 @@ residue1 = mhd.Residue(equil, p, q, s_guess=0.65)
 residue2 = mhd.Residue(equil, p, q, s_guess=0.65, theta=np.pi)
 prob = objectives.LeastSquaresProblem.from_tuples(
     [
-        (qs.residuals, 0, 5),
-        (equil.vacuum_well, 1e-2, 1),
-        (surf.aspect_ratio, 6, 1),
-        (equil.iota, 0.39, 1),
-        (iota_edge_target.J, 0.41, 1),
-        (residue1.J, 0, 1),
-        (residue2.J, 0, 1),
+        (equil.vacuum_well, -1e-2, 1), # 1% vacuum well target
+        (surf.aspect_ratio, 8, 1),
+        (equil.iota, 0.2, 1),
+        (iota_edge_target.J, 0.23, 1),
+        (qs.profile, 0, 1),
+        # (residue1.J, 0, 1),
+        # (residue2.J, 0, 1),
     ]
 )
 
@@ -137,35 +152,58 @@ print("   Initial Vacuum Well = ", equil.vacuum_well())
 print("   Initial Surface Aspect Ratio = ", surf.aspect_ratio())
 print("   Initial Equilibrium Iota = ", equil.iota())
 print("   Initial Iota Edge Target = ", iota_edge_target.J())
-print("   Initial Residue 1 = ", residue1.J())
-print("   Initial Residue 2 = ", residue2.J())
 
+# qs2 = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 6), helicity_m=1, helicity_n=0 )
+# print("   Initial VMEC Quasisymmetry = ", qs2.total())
+
+# print("   Initial Residue 1 = ", residue1.J())
+# print("   Initial Residue 2 = ", residue2.J())
+mpi = equil.mpi
 if mpi is None:
-    least_squares_serial_solve(prob, max_nfev=100)
+    least_squares_serial_solve(prob, grad=True, save_residuals=True, max_nfev=100)
 else:
-    least_squares_mpi_solve(prob, mpi, grad=True, max_nfev=100)
+    least_squares_mpi_solve(prob, mpi, grad=True, save_residuals=True, max_nfev=100)
 
 # Run the final iteration with a higher poincare resolution
 
-# equil = mhd.Spec("hybrid_tokamak/laptop/nfp2_QA_iota0.4_000_000082.sp", mpi)
+def boozer_plot():
+    import booz_xform
+    import matplotlib.pyplot as plt
+    import numpy as np
 
-qs = mhd.QuasisymmetryRatioResidualSpec(
-    equil, surfaces=np.linspace(0.1, 1, 6), helicity_m=1, helicity_n=0
-)
-if mpi.proc0_world:
-    equil.inputlist.nptrj = 8
-    equil.inputlist.nppts = 128
-    equil.recompute_bell()
-    equil.run()
+    vmec = mhd.Vmec(filename, mpi=mpi)
+    vmec.verbose = mpi.proc0_world
+    surf = vmec.boundary
+
+    # Configure quasisymmetry objective:
+    boozer = mhd.Boozer(vmec)
+    boozer.bx.verbose = mpi.proc0_world
+
+    if mpi.proc0_world:
+        booz_xform.surfplot(boozer.bx, js=0)
+        plt.figure()
+        booz_xform.surfplot(boozer.bx, js=0, fill=False, cmap=plt.cm.turbo, levels=np.arange(1.3, 2.0, 0.05))
+        plt.figure()
+        booz_xform.surfplot(boozer.bx, js=0, fill=False)
+        plt.figure()
+        booz_xform.symplot(boozer.bx)
+        plt.show()
+
+# Run the equilibrium on all MPI ranks
+equil.inputlist.nptrj = 8
+equil.inputlist.nppts = 128
+equil.recompute_bell()
+equil.run()
     
+if mpi.proc0_world:
     print(" Final objective function = ", prob.objective())
     print("   Final Quasisymmetry Ratio = ", qs.total())
     print("   Final Vacuum Well = ", equil.vacuum_well())
     print("   Final Surface Aspect Ratio = ", surf.aspect_ratio())
     print("   Final Equilibrium Iota = ", equil.iota())
     print("   Final Iota Edge Target = ", iota_edge_target.J())
-    print("   Final Residue 1 = ", residue1.J())
-    print("   Final Residue 2 = ", residue2.J())
+    # print("   Final Residue 1 = ", residue1.J())
+    # print("   Final Residue 2 = ", residue2.J())
     
     targets = "_residual_qs_aspect" 
     basename = equil.results.filename.removesuffix(".sp.h5") + targets
@@ -179,6 +217,7 @@ if mpi.proc0_world:
         np.linspace(-0.999, 1, 32), np.linspace(0, 2 * np.pi, 128), np.linspace(0, 0, 2)
     )
     plt.savefig( equil.results.filename+"_modB.png")
+    surf.plot(close=True)
     plt.show()
 
     import coils_for_QA as coilopt
