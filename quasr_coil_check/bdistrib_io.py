@@ -37,7 +37,7 @@ def read_netcdf(filename: str):
         return surface
 
 
-def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
+def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier, filename_template=None):
     # HACK: To generate the template file
     # B_VOL_AVG_TARGET = 5.865 #T
     # magnetic_scaling = B_VOL_AVG_TARGET / equil.wout.volavgB
@@ -59,10 +59,10 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
     #     f.variables["bsubvmnc"][:] *= magnetic_scaling
     #     f.variables["bsupumnc"][:] *= magnetic_scaling
     #     f.variables["bsupvmnc"][:] *= magnetic_scaling
-
-    filename_template = (
-        f"{os.path.dirname(__file__)}/wout_d23p4_tm_reference_LgradBscaling.nc"
-    )
+    if filename_template is None:
+        filename_template = (
+            f"{os.path.dirname(__file__)}/wout_d23p4_tm_reference_LgradBscaling.nc"
+        )
     os.system(f"cp {filename_template} {filename}")
 
     # Copy the file on disk with a new name, open with r+ and overwrite it.
