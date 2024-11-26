@@ -16,7 +16,7 @@ equil = mhd.Spec.default_freeboundary(copy_to_pwd=True)
 rotating_ellipse = True
 if rotating_ellipse:
     # equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", mpi, verbose=True)
-    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", mpi, verbose=True)
+    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", mpi, verbose=True, keep_all_files=True)
 else:
     equil = mhd.Spec("hybrid_tokamak/laptop/nfp2_QA_iota0.4_Vns.sp", mpi, verbose=True)
 assert equil.lib.inputlist.lfreebound, "SPEC must be in Freeboundary mode"
