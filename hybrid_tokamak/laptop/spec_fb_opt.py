@@ -5,105 +5,87 @@ from simsopt.solve import least_squares_serial_solve, least_squares_mpi_solve
 import matplotlib.pyplot as plt
 import numpy as np
 from simsopt.util import MpiPartition
+import hybrid_tokamak.generate_Bn_initial as Bn_initial
 
 import logging
 logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 
-# equil = mhd.Spec.default_freeboundary(copy_to_pwd=True)
-equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", verbose=True)
-mpi = equil.mpi
+mpi = MpiPartition(2)
+equil = mhd.Spec.default_freeboundary(copy_to_pwd=True)
+rotating_ellipse = True
+if rotating_ellipse:
+    # equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", mpi, verbose=True)
+    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", mpi, verbose=True)
+else:
+    equil = mhd.Spec("hybrid_tokamak/laptop/nfp2_QA_iota0.4_Vns.sp", mpi, verbose=True)
 assert equil.lib.inputlist.lfreebound, "SPEC must be in Freeboundary mode"
 
+vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", mpi)
+vmec.boundary = equil.boundary
+boozer = mhd.Boozer(vmec)
+qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 12), helicity_m=1, helicity_n=1, ntheta=32, nphi=32)
+
 inputlist = equil.lib.inputlist
-# inputlist.lautoinitbn = True
-# inputlist.mfreeits = 1
+inputlist.lautoinitbn = False
+inputlist.mfreeits = 8
 
 # To allow for poincare tracing
-inputlist.nppts = 64
-nvol = equil.nvol
-for ivol in range(nvol):
+inputlist.nppts = 32
+for ivol in range(equil.mvol):
     inputlist.nptrj[ivol] = 8
 
-# inputlist.mpol = 7
-# inputlist.ntor = 7
-
-# Solve for iota and oita
-inputlist.lconstraint = 1
-
-# def change_nvol(new_nvol):
-#     inputlist.nvol = new_nvol
-#     equil.nvol = new_nvol
-#     equil.mvol = new_nvol + int(equil.freebound)
-#     inputlist.linitialize = 1
-#     equil.initial_guess = None
-# change_nvol(2)
-
 Bn = equil.normal_field  # This is our new fancy-pants degree of freedom :)
-for lvol in range(nvol):
-    inputlist.lrad[lvol] = 6
-Bn.surface.set_rc(1,1,0)
-Bn.surface.set_zs(0,1,0)
-Bn.surface.set_zs(1,1,0)
-Bn.surface.set_zs(0,1,0)
-if mpi.proc0_world:
-    Bn.surface.plot()
-    equil.boundary.plot()
-    plt.imshow(Bn.get_vns_asarray())
-    plt.show()
 
-equil.run()
-# Bn.surface.change_resolution(1,1)
-
-
-desired_iota = .426895384431299
-iota_weight = 1
-if mpi.proc0_world:
-    # Run the final iteration with a higher poincare resolution
-    # equil.tflux_profile.fix_all()
-    # equil.iota_profile.fix_all()
-    # equil.oita_profile.fix_all()
-
-
-    Bn.surface.plot()
-    equil.boundary.plot()
-    plt.imshow(Bn.get_vns_asarray())
-    plt.show()
-
-    print(equil.dof_names)
-    print("B.n", Bn)
-    Bn.fix_all()
-    mmax = nmax = 1
+print(equil.dof_names)
+print("B.n", Bn)
+equil.fix_all()
+Bn.fix_all()
+for mmax in range(1, equil.mvol):
+    nmax = mmax
     Bn.fixed_range(0, mmax, -nmax, nmax, False)
-    equil.results.plot_poincare()
-    equil.results.plot_kam_surface()
-    
+
+    if False:
+        # Run the final iteration with a higher poincare resolution
+        # equil.tflux_profile.fix_all()
+        # equil.iota_profile.fix_all()
+        # equil.oita_profile.fix_all()
 
 
-    # iota = p / q
-    p = 8
-    q = 5
-    residue1 = mhd.Residue(equil, p, q, s_guess=0.65)
-    print("iota", equil.iota())
-    for p,q in [(8,5), (-8,5), (10,5), (7,5), (-7,5), (9,5), (-9,5)]:
-        try:
-            print("Compute residue for p = ", p, ", q = ", q)
-            print(mhd.Residue(equil, p, q, s_guess=0.65).J())
-        except:
-            print("Failed to compute residue for p = ", p, ", q = ", q)
-    exit()
+        Bn.surface.plot(show=False, close=True)
+        equil.boundary.plot(show=False, close=True)
 
-prob = LeastSquaresProblem.from_tuples(
-    [
-        (equil.iota, desired_iota, iota_weight),
-    ]
-)
+        equil.results.plot_modB(np.linspace(-0.999, 1, 32), np.linspace(0, 2*np.pi, 32), )
+        equil.results.plot_poincare()
+        equil.results.plot_kam_surface()
+        plt.show()
 
-if mpi is None:
-    least_squares_serial_solve(prob)
-else:
-    least_squares_mpi_solve(prob, mpi, grad=True)
 
+        # iota = p / q
+        p = 8
+        q = 5
+        residue1 = mhd.Residue(equil, p, q, s_guess=0.65)
+        print("iota", equil.iota())
+        for p,q in [(8,5), (-8,5), (10,5), (7,5), (-7,5), (9,5), (-9,5)]:
+            try:
+                print("Compute residue for p = ", p, ", q = ", q)
+                print(mhd.Residue(equil, p, q, s_guess=0.65).J())
+            except:
+                print("Failed to compute residue for p = ", p, ", q = ", q)
+    initial_volume = equil.boundary.volume()
+    prob = LeastSquaresProblem.from_tuples(
+        [
+            (qs.residuals, 0, 1),
+            (equil.volume, initial_volume, 1)
+        ]
+    )
+
+    if mpi is None:
+        least_squares_serial_solve(prob)
+    else:
+        least_squares_mpi_solve(prob, mpi, grad=True)
+
+    equil.save(f"hybrid_tokamak/laptop/solution{mmax}")
 
 print("At the optimum,")
 print(" volume, according to SPEC    = ", equil.volume())
