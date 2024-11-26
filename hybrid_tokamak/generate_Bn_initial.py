@@ -13,9 +13,9 @@ def generate_Bn_initial(rotating_ellipse = True, plot=False):
     else:
         equil = mhd.Spec("hybrid_tokamak/laptop/nfp2_QA_iota0.4.sp", verbose=True)
     hybrid_surface = equil.boundary.copy()
-    middle_surface = equil.boundary.copy()#range="field period")
+    middle_surface = equil.boundary.copy(range="field period")
     # Called outers instead of outer to align with middle & hybrid <3
-    outers_surface = equil.boundary.copy()#range="field period")
+    outers_surface = equil.boundary.copy(range="field period")
 
 
     if plot and equil.freebound:
@@ -29,15 +29,13 @@ def generate_Bn_initial(rotating_ellipse = True, plot=False):
 
     if rotating_ellipse:
         # Make a circular torus
-        middle_surface.change_resolution(middle_surface.mpol, 0)
-        middle_surface.scale(1.6)
-        middle_surface.set_rc(0, 0, hybrid_surface.get_rc(0, 0) )
+        middle_surface = equil.computational_boundary
         middle_surface.change_resolution(equil.mpol, equil.ntor)
-
-        outers_surface.change_resolution(outers_surface.mpol, 0)
+        
+        outers_surface =  equil.computational_boundary.copy(range="field period")
         outers_surface.change_resolution(equil.mpol, equil.ntor)
-        outers_surface.scale(1.8)
-        outers_surface.set_rc(0, 0, hybrid_surface.get_rc(0, 0) )
+        outers_surface.scale(1.2)
+        outers_surface.set_rc(0, 0, middle_surface.get_rc(0, 0) )
     else:
         scaleR0 = 0.98
         # Make an ellipsoid shape
