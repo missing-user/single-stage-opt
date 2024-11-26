@@ -17,6 +17,16 @@ def generate_Bn_initial(rotating_ellipse = True, plot=False):
     # Called outers instead of outer to align with middle & hybrid <3
     outers_surface = equil.boundary.copy()#range="field period")
 
+
+    if plot and equil.freebound:
+        simsopt.geo.plot(
+            [
+                hybrid_surface,
+                equil.computational_boundary
+            ],
+            engine="plotly",
+        )
+
     if rotating_ellipse:
         # Make a circular torus
         middle_surface.change_resolution(middle_surface.mpol, 0)
@@ -116,7 +126,7 @@ def generate_Bn_initial(rotating_ellipse = True, plot=False):
     nml = py_spec.SPECNamelist(equil.extension+".sp")
     
     # Force updating the internal arrays since mpol!=equil.mpol
-    nml.update_resolution(equil.mpol+1, equil.ntor)
+    nml.update_resolution(equil.mpol-1, equil.ntor)
     nml.update_resolution(equil.mpol, equil.ntor)
 
     for m in range(equil.mpol):
