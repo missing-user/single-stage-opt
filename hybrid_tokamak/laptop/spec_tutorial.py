@@ -119,7 +119,7 @@ qs = mhd.QuasisymmetryRatioResidualSpec(
 def iota_average():
     return np.mean(equil.results.transform.fiota[1, equil.results.poincare.success==1])
 
-def iota_edge(equil):
+def iota_edge(equil:mhd.Spec):
     equil.run()
     if equil.results.poincare.success[-1] != 1:
         raise simsopt._core.ObjectiveFailure("iota_edge failed, could not find iota values")

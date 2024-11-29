@@ -315,6 +315,7 @@ Vns(6,6)    =  0.000000000000000E+00 Bns(6,6)    =  0.000000000000000E+00 Vnc(6,
  Mregular    =        -1
  Lrzaxis     =         1
  Ntoraxis    =         3
+ Lgridvcasing=         1
 /
 &locallist
  LBeltrami   =         4
@@ -345,6 +346,8 @@ Vns(6,6)    =  0.000000000000000E+00 Bns(6,6)    =  0.000000000000000E+00 Vnc(6,
  vcasingtol  =   1.000000000000000E-08
  vcasingits  =         8
  vcasingper  =         1
+ vcNt        = 512
+ vcNz        = 512
 /
 &diagnosticslist
  odetol      =   1.000000000000000E-07
