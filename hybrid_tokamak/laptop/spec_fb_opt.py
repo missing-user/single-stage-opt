@@ -1,96 +1,85 @@
+import simsopt
 from simsopt import mhd
 from simsopt import geo
 from simsopt.objectives import LeastSquaresProblem
+import simsopt.objectives
 from simsopt.solve import least_squares_serial_solve, least_squares_mpi_solve
 import matplotlib.pyplot as plt
 import numpy as np
 from simsopt.util import MpiPartition
-import hybrid_tokamak.generate_Bn_initial as Bn_initial
 
 import logging
 logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().setLevel(logging.WARN)
 
-mpi = MpiPartition(2)
-equil = mhd.Spec.default_freeboundary(copy_to_pwd=True)
 rotating_ellipse = True
+mpi = MpiPartition()
 if rotating_ellipse:
     # equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", mpi, verbose=True)
-    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", mpi, verbose=True, keep_all_files=True)
+    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=False, keep_all_files=True, tolerance=1e-11)
 else:
-    equil = mhd.Spec("hybrid_tokamak/laptop/nfp2_QA_iota0.4_Vns.sp", mpi, verbose=True)
+    equil = mhd.Spec("hybrid_tokamak/laptop/nfp2_QA_iota0.4_Vns.sp", mpi, verbose=False, tolerance=1e-11)
 assert equil.lib.inputlist.lfreebound, "SPEC must be in Freeboundary mode"
+surf = equil.boundary
 
-vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", mpi)
-vmec.boundary = equil.boundary
+vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False)
+vmec.boundary = surf
 boozer = mhd.Boozer(vmec)
 qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 12), helicity_m=1, helicity_n=1, ntheta=32, nphi=32)
 
 inputlist = equil.lib.inputlist
-inputlist.lautoinitbn = False
-inputlist.mfreeits = 8
+Bn = equil._normal_field  # This is our new fancy-pants degree of freedom :)
 
-# To allow for poincare tracing
-inputlist.nppts = 32
-for ivol in range(equil.mvol):
-    inputlist.nptrj[ivol] = 8
-
-Bn = equil.normal_field  # This is our new fancy-pants degree of freedom :)
-
-print(equil.dof_names)
-print("B.n", Bn)
-equil.fix_all()
+# print("All possible B.n dofs", equil.dof_names)
+equil.boundary.fix_all()
+# equil.fix_all()
 Bn.fix_all()
-for mmax in range(1, equil.mvol):
+for mmax in range(1, 6):
     nmax = mmax
+    nmax = 0
     Bn.fixed_range(0, mmax, -nmax, nmax, False)
-
-    if False:
-        # Run the final iteration with a higher poincare resolution
-        # equil.tflux_profile.fix_all()
-        # equil.iota_profile.fix_all()
-        # equil.oita_profile.fix_all()
-
-
-        Bn.surface.plot(show=False, close=True)
-        equil.boundary.plot(show=False, close=True)
-
-        equil.results.plot_modB(np.linspace(-0.999, 1, 32), np.linspace(0, 2*np.pi, 32), )
-        equil.results.plot_poincare()
-        equil.results.plot_kam_surface()
-        plt.show()
-
-
-        # iota = p / q
-        p = 8
-        q = 5
-        residue1 = mhd.Residue(equil, p, q, s_guess=0.65)
-        print("iota", equil.iota())
-        for p,q in [(8,5), (-8,5), (10,5), (7,5), (-7,5), (9,5), (-9,5)]:
-            try:
-                print("Compute residue for p = ", p, ", q = ", q)
-                print(mhd.Residue(equil, p, q, s_guess=0.65).J())
-            except:
-                print("Failed to compute residue for p = ", p, ", q = ", q)
+    print(Bn.dof_names)
+    Bn.unfix("vns(2,-1)")
+    print("equil", Bn.vns)
+    print(equil.volume(), equil.boundary.aspect_ratio())
+    Bn.set("vns(2,-1)", 6.5e-2)
+    print("After setting", Bn.vns)
+    equil.run()
+    print(equil.volume(), equil.boundary.aspect_ratio())
+    Bn.set("vns(2,-1)", 6e-2)
+    print("equil", Bn.vns)
+    equil.run()
+    print(equil.volume(), equil.boundary.aspect_ratio())
+    
     initial_volume = equil.boundary.volume()
+    def callback(equil, vmec, qs):
+        print(equil.volume(),"vmec.vacuum_well", vmec.vacuum_well(),"qs.profile", qs.profile())
+        return 0
     prob = LeastSquaresProblem.from_tuples(
         [
-            (qs.residuals, 0, 1),
-            (equil.volume, initial_volume, 1)
+            (equil.volume, 1.2*initial_volume, 2),
+            (equil.boundary.aspect_ratio, 10, 2),
+            # (vmec.vacuum_well, -0.05, 1),
+            # (qs.profile, 0, 2),
+            # (simsopt.make_optimizable(callback, equil, vmec, qs).J , 0, 1)
         ]
     )
+    
+    prob.plot_graph(show=True)
+    print(f"Free dofs of problem", prob.dof_names)
 
     if mpi is None:
         least_squares_serial_solve(prob)
     else:
-        least_squares_mpi_solve(prob, mpi, grad=True)
-
-    equil.save(f"hybrid_tokamak/laptop/solution{mmax}")
+        least_squares_mpi_solve(prob, mpi, grad=True, save_residuals=True)
 
 print("At the optimum,")
 print(" volume, according to SPEC    = ", equil.volume())
 print(" iota on axis = ", equil.iota())
 print(" objective function = ", prob.objective())
+
+prob.plot_graph(show=False)
+plt.figure()
 
 # Run the final iteration with a higher poincare resolution
 equil.lib.inputlist.nptrj = 16
@@ -103,7 +92,7 @@ if mpi.proc0_world:
     equil.results.plot_iota()
     equil.results.plot_pressure()
     equil.results.plot_kam_surface()
-    equil.results.plot_modB()
+    equil.results.plot_modB(np.linspace(-0.999, 1, 32), np.linspace(0, 2*np.pi, 32), )
 
     plt.figure()
     j_dot_B, _, _ = equil.results.get_surface_current_density(1)
