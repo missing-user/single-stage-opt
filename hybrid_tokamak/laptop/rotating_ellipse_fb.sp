@@ -315,7 +315,7 @@ Vns(6,6)    =  0.000000000000000E+00 Bns(6,6)    =  0.000000000000000E+00 Vnc(6,
  Mregular    =        -1
  Lrzaxis     =         1
  Ntoraxis    =         3
- Lgridvcasing=         1
+ Lvcgrid     =         1
 /
 &locallist
  LBeltrami   =         4
