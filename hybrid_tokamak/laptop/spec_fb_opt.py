@@ -16,7 +16,7 @@ rotating_ellipse = True
 mpi = MpiPartition()
 if rotating_ellipse:
     # equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", mpi, verbose=True)
-    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=False, keep_all_files=True, tolerance=1e-11)
+    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=True, keep_all_files=True, tolerance=1e-11)
 else:
     equil = mhd.Spec("hybrid_tokamak/laptop/nfp2_QA_iota0.4_Vns.sp", mpi, verbose=False, tolerance=1e-11)
 assert equil.lib.inputlist.lfreebound, "SPEC must be in Freeboundary mode"
@@ -36,20 +36,11 @@ equil.boundary.fix_all()
 Bn.fix_all()
 for mmax in range(1, 6):
     nmax = mmax
-    nmax = 0
+    # nmax = 0
     Bn.fixed_range(0, mmax, -nmax, nmax, False)
-    print(Bn.dof_names)
-    Bn.unfix("vns(2,-1)")
-    print("equil", Bn.vns)
-    print(equil.volume(), equil.boundary.aspect_ratio())
-    Bn.set("vns(2,-1)", 6.5e-2)
-    print("After setting", Bn.vns)
-    equil.run()
-    print(equil.volume(), equil.boundary.aspect_ratio())
-    Bn.set("vns(2,-1)", 6e-2)
-    print("equil", Bn.vns)
-    equil.run()
-    print(equil.volume(), equil.boundary.aspect_ratio())
+    for key in Bn.dof_names:
+        Bn.set_upper_bound(key,  1e-1)
+        Bn.set_lower_bound(key, -1e-1)
     
     initial_volume = equil.boundary.volume()
     def callback(equil, vmec, qs):
@@ -58,14 +49,12 @@ for mmax in range(1, 6):
     prob = LeastSquaresProblem.from_tuples(
         [
             (equil.volume, 1.2*initial_volume, 2),
-            (equil.boundary.aspect_ratio, 10, 2),
-            # (vmec.vacuum_well, -0.05, 1),
-            # (qs.profile, 0, 2),
-            # (simsopt.make_optimizable(callback, equil, vmec, qs).J , 0, 1)
+            (vmec.vacuum_well, -0.05, 1),
+            (qs.profile, 0, 2),
+            (simsopt.make_optimizable(callback, equil, vmec, qs).J , 0, 1)
         ]
     )
     
-    prob.plot_graph(show=True)
     print(f"Free dofs of problem", prob.dof_names)
 
     if mpi is None:

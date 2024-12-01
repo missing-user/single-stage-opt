@@ -4,10 +4,13 @@ import sys
 import matplotlib.pyplot as plt
 
 filenames = sys.argv[1:]
+fig, axs = plt.subplots(1, 3, figsize=(12, 4))
 for filename in filenames:
   try:
     out = py_spec.SPECout(filename) 
-    out.plot_kam_surface(ntheta=128, ax=plt.gca(), c=None, label=None)
+    out.plot_kam_surface(ntheta=128, zeta=0.0, ax=axs[0], c=None, label=None)
+    out.plot_kam_surface(ntheta=128, zeta=0.25*np.pi/5, ax=axs[1], c=None, label=None)
+    out.plot_kam_surface(ntheta=128, zeta=0.5*np.pi/5, ax=axs[2], c=None, label=None)
   except:
     print("Failed to read ", filename)
 plt.show()
