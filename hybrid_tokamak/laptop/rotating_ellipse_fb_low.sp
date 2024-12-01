@@ -8,8 +8,8 @@
  gamma       =   0.000000000000000E+00
  Nfp         =         5
  Nvol        =         1
- Mpol        =         8
- Ntor        =         8
+ Mpol        =         7
+ Ntor        =         7
  Lrad        =                      10                      8
  tflux       =   1.000000000000000E+00  4.231541469689058E+01
  pflux       =   0.000000000000000E+00  4.951283528956106E-01
@@ -321,7 +321,7 @@ Vns(6,6)    =  0.000000000000000E+00 Bns(6,6)    =  5.517178833545739E-09 Vnc(6,
  LBeltrami   =         4
  Linitgues   =         1
  Lmatsolver  =         3
- NiterGMRES  =       200
+ NiterGMRES  =       300
  LGMRESprec  =         1
  epsGMRES    =   1.000000000000000E-14
  epsILU      =   1.000000000000000E-12

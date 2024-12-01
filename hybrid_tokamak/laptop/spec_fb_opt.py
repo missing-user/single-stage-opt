@@ -1,7 +1,7 @@
 import simsopt
 from simsopt import mhd
 from simsopt import geo
-from simsopt.objectives import LeastSquaresProblem
+from simsopt.objectives import LeastSquaresProblem, ConstrainedProblem
 import simsopt.objectives
 from simsopt.solve import least_squares_serial_solve, least_squares_mpi_solve
 import matplotlib.pyplot as plt
@@ -16,7 +16,7 @@ rotating_ellipse = True
 mpi = MpiPartition()
 if rotating_ellipse:
     # equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", mpi, verbose=True)
-    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=True, keep_all_files=True, tolerance=1e-11)
+    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=True, tolerance=1e-11, keep_all_files=False) 
 else:
     equil = mhd.Spec("hybrid_tokamak/laptop/nfp2_QA_iota0.4_Vns.sp", mpi, verbose=False, tolerance=1e-11)
 assert equil.lib.inputlist.lfreebound, "SPEC must be in Freeboundary mode"
@@ -24,9 +24,7 @@ surf = equil.boundary
 
 vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False)
 vmec.boundary = surf
-boozer = mhd.Boozer(vmec)
-qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 16), helicity_m=1, helicity_n=1, ntheta=32, nphi=32)
-
+qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 16), helicity_m=1, helicity_n=-1, ntheta=32, nphi=32)
 inputlist = equil.lib.inputlist
 Bn = equil._normal_field  # This is our new fancy-pants degree of freedom :)
 
@@ -40,27 +38,27 @@ for mmax in range(1, 6):
     Bn.fixed_range(0, mmax, -nmax, nmax, False)
     Bn.upper_bounds = np.ones(Bn.local_dof_size) *  2e-2/mmax # higher fourier modes crash the simulation more easily
     Bn.lower_bounds = np.ones(Bn.local_dof_size) * -2e-2/mmax # higher fourier modes crash the simulation more easily
-    
+    print("Bn.bounds", Bn.bounds)
+    print(qs.profile())
     initial_volume = equil.boundary.volume()
-    def callback(equil, vmec, qs):
-        print(equil.volume(),"vmec.vacuum_well", vmec.vacuum_well(),"qs.profile", qs.profile())
-        return 0
     prob = LeastSquaresProblem.from_tuples(
         [
             (equil.volume, initial_volume, 1),
-            (equil.boundary.major_radius, R0, 1), # try to keep the major radius fixed
+            # (equil.boundary.major_radius, R0, 1), # try to keep the major radius fixed
             (vmec.vacuum_well, -0.05, 1),
-            (qs.profile, 0, 2),
-            # (simsopt.make_optimizable(callback, equil, vmec, qs).J , 0, 1)
+            (qs.residuals, 0, 1),
         ]
     )
+
+    # prob = ConstrainedProblem(
+    #     qs.total, 
+    #     tuple_lc=,
+    #     tuples_nlc=
+    # )
     
     print(f"Free dofs of problem", prob.dof_names)
 
-    if mpi is None:
-        least_squares_serial_solve(prob)
-    else:
-        least_squares_mpi_solve(prob, mpi, grad=False, save_residuals=True)
+    least_squares_mpi_solve(prob, mpi, abs_step=1e-6, grad=True, save_residuals=True, max_nfev=25)
 
     equil.results.plot_kam_surface()
     plt.show()
