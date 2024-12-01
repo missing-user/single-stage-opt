@@ -25,22 +25,21 @@ surf = equil.boundary
 vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False)
 vmec.boundary = surf
 boozer = mhd.Boozer(vmec)
-qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 12), helicity_m=1, helicity_n=1, ntheta=32, nphi=32)
+qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 16), helicity_m=1, helicity_n=1, ntheta=32, nphi=32)
 
 inputlist = equil.lib.inputlist
 Bn = equil._normal_field  # This is our new fancy-pants degree of freedom :)
 
 # print("All possible B.n dofs", equil.dof_names)
 equil.boundary.fix_all()
-# equil.fix_all()
 Bn.fix_all()
+R0 = equil.boundary.major_radius()
 for mmax in range(1, 6):
     nmax = mmax
     # nmax = 0
     Bn.fixed_range(0, mmax, -nmax, nmax, False)
-    for key in Bn.dof_names:
-        Bn.set_upper_bound(key,  1e-1)
-        Bn.set_lower_bound(key, -1e-1)
+    Bn.upper_bounds = np.ones(Bn.local_dof_size) *  2e-2/mmax # higher fourier modes crash the simulation more easily
+    Bn.lower_bounds = np.ones(Bn.local_dof_size) * -2e-2/mmax # higher fourier modes crash the simulation more easily
     
     initial_volume = equil.boundary.volume()
     def callback(equil, vmec, qs):
@@ -48,10 +47,11 @@ for mmax in range(1, 6):
         return 0
     prob = LeastSquaresProblem.from_tuples(
         [
-            (equil.volume, 1.2*initial_volume, 2),
+            (equil.volume, initial_volume, 1),
+            (equil.boundary.major_radius, R0, 1), # try to keep the major radius fixed
             (vmec.vacuum_well, -0.05, 1),
             (qs.profile, 0, 2),
-            (simsopt.make_optimizable(callback, equil, vmec, qs).J , 0, 1)
+            # (simsopt.make_optimizable(callback, equil, vmec, qs).J , 0, 1)
         ]
     )
     
@@ -60,29 +60,36 @@ for mmax in range(1, 6):
     if mpi is None:
         least_squares_serial_solve(prob)
     else:
-        least_squares_mpi_solve(prob, mpi, grad=True, save_residuals=True)
+        least_squares_mpi_solve(prob, mpi, grad=False, save_residuals=True)
+
+    equil.results.plot_kam_surface()
+    plt.show()
 
 print("At the optimum,")
-print(" volume, according to SPEC    = ", equil.volume())
-print(" iota on axis = ", equil.iota())
-print(" objective function = ", prob.objective())
+print(" iota on axis       =", equil.iota())
+print(" objective function =", prob.objective())
+print(" equil.volume       =", equil.volume())
+print(" boundary.R0        =", equil.boundary.major_radius()) 
+print(" vmec.vacuum_well   =", vmec.vacuum_well())
+print(" qs.profile         =", qs.profile())
 
 prob.plot_graph(show=False)
-plt.figure()
 
 # Run the final iteration with a higher poincare resolution
 equil.lib.inputlist.nptrj = 16
-equil.lib.inputlist.nppts = 128
+equil.lib.inputlist.nppts = 256
 equil.lib.inputlist.odetol = 1e-8
 equil.run()
 
 if mpi.proc0_world:
     equil.results.plot_poincare()
     equil.results.plot_iota()
-    equil.results.plot_pressure()
     equil.results.plot_kam_surface()
     equil.results.plot_modB(np.linspace(-0.999, 1, 32), np.linspace(0, 2*np.pi, 32), )
-
+    plt.figure()
+    plt.plot(qs.profile())
+    plt.title("Quasisymmetry Profile")
+    plt.xlabel("s")
     plt.figure()
     j_dot_B, _, _ = equil.results.get_surface_current_density(1)
     plt.subplot(1, 2, 1)

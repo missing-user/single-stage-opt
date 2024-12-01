@@ -8,9 +8,9 @@
  gamma       =   0.000000000000000E+00
  Nfp         =         5
  Nvol        =         1
- Mpol        =         6
- Ntor        =         6
- Lrad        =                      10                      6
+ Mpol        =         8
+ Ntor        =         8
+ Lrad        =                      10                      8
  tflux       =   1.000000000000000E+00  4.231541469689058E+01
  pflux       =   0.000000000000000E+00  4.951283528956106E-01
  helicity    =  -8.906061586626008E-07  1.680839982546952E-04
@@ -347,11 +347,11 @@ Vns(6,6)    =  0.000000000000000E+00 Bns(6,6)    =  5.517178833545739E-09 Vnc(6,
  vcasingits  =         8
  vcasingper  =         1
  vcnt        =       256
- vcnz        =      1024
+ vcnz        =      2048
 /
 &diagnosticslist
  odetol      =   1.000000000000000E-07
- nPpts       =        32
+ nPpts       =        0
  Ppts        =   0.000000000000000E+00
  nPtrj       =      8     8
  LHevalues   =         F
@@ -361,7 +361,7 @@ Vns(6,6)    =  0.000000000000000E+00 Bns(6,6)    =  5.517178833545739E-09 Vnc(6,
  dpp         =        -1
  dqq         =        -1
  dRZ         =   1.000000000000000E-05
- Lcheck      =         1
+ Lcheck      =         0
  Ltiming     =         F
 /
 &screenlist
