@@ -3,7 +3,7 @@ from simsopt import mhd
 from simsopt import geo
 from simsopt.objectives import LeastSquaresProblem, ConstrainedProblem
 import simsopt.objectives
-from simsopt.solve import least_squares_serial_solve, least_squares_mpi_solve
+from simsopt.solve import least_squares_mpi_solve
 import matplotlib.pyplot as plt
 import numpy as np
 from simsopt.util import MpiPartition
@@ -24,7 +24,7 @@ surf = equil.boundary
 
 vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False)
 vmec.boundary = surf
-qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 16), helicity_m=1, helicity_n=-1, ntheta=32, nphi=32)
+qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 16), helicity_m=1, helicity_n=0, ntheta=32, nphi=32)
 inputlist = equil.lib.inputlist
 Bn = equil._normal_field  # This is our new fancy-pants degree of freedom :)
 
