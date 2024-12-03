@@ -10,18 +10,21 @@ from simsopt.mhd.vmec_diagnostics import vmec_compute_geometry, vmec_fieldlines
 
 import sys
 
-def boozer_plot(filename):
-    vmec = mhd.Vmec(filename)
-    boozer = mhd.Boozer(vmec)
 
+def getLgradB(vmec:mhd.Vmec):
     s = [0.25, 1.0]
     ntheta = 32
     nphi = 32
     theta = np.linspace(0, 2 * np.pi, ntheta, endpoint=False)
     phi = np.linspace(0, 2 * np.pi / vmec.wout.nfp, nphi, endpoint=False)
     data = vmec_compute_geometry(vmec, s, theta, phi)
-    print("data.L_grad_B", data.L_grad_B)
-    print("Average", np.mean(np.abs(data.L_grad_B)))
+    return np.min(data.L_grad_B)
+
+def boozer_plot(filename):
+    vmec = mhd.Vmec(filename)
+    boozer = mhd.Boozer(vmec)
+
+    print("data.L_grad_B", getLgradB(vmec))
 
     b1 = boozer.bx
     b1.read_wout(filename)
