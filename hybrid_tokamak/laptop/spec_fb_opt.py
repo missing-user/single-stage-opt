@@ -7,11 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from simsopt.util import MpiPartition
 from simsopt.mhd.vmec_diagnostics import vmec_compute_geometry
-
+import subprocess
 import sys
 import logging
 from simsopt import util
-util.initialize_logging("freeboundary.log", mpi=True)
 
 mpi = MpiPartition()
 only_plot = False
@@ -22,15 +21,18 @@ if len(sys.argv)>=2:
         import subprocess
         subprocess.check_call(["cp", filename, filename[:-4]])
         filename = filename[:-4]
-    equil = mhd.Spec(filename, mpi, verbose=True, tolerance=1e-11)
+    equil = mhd.Spec(filename, mpi, verbose=False, tolerance=1e-10)
     only_plot = True
+    
+    util.initialize_logging("freeboundary.log", mpi=True, level=logging.WARNING)
 else:
-    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=False, tolerance=1e-10, keep_all_files=True)
+    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=True, tolerance=1e-10, keep_all_files=True)
 
     equil.lib.inputlist.odetol = 1e-6
     equil.lib.inputlist.nptrj[0] = 8
     equil.lib.inputlist.nptrj[1] = 2
     equil.lib.inputlist.nppts = 32
+    util.initialize_logging("freeboundary.log", mpi=True, level=logging.INFO)
 
 assert equil.lib.inputlist.lfreebound, "SPEC must be in Freeboundary mode"
 if freeboundary:
@@ -54,7 +56,20 @@ surf.fix_all()
 Bn.fix_all()
 R0 = 1 #surf.major_radius()
 # equil.unfix("phiedge")
-for mmax in range(1, 2):
+
+for mmax in range(1, 3):
+    nmax = mmax
+    if freeboundary:
+        # set appropriate bounds for DOFs
+        prev_dofs = np.array(Bn.local_dofs_free_status, dtype=bool).copy()
+            
+        Bn.fixed_range(0, mmax, -nmax, nmax, False) # unfix square region
+        additional_dofs = np.logical_and(Bn.local_dofs_free_status, np.logical_not(prev_dofs))
+        # higher fourier modes crash the simulation more easily
+        Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 2e-2/nmax, Bn.local_full_lower_bounds)
+        Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 2e-2/nmax, Bn.local_full_upper_bounds)
+
+for mmax in range(3, 5):
     nmax = mmax
     if freeboundary:
         # set appropriate bounds for DOFs
@@ -67,7 +82,7 @@ for mmax in range(1, 2):
         Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 2e-2/nmax, Bn.local_full_upper_bounds)
         logging.info(f"upper: {Bn.upper_bounds}")
         logging.info(f"value: {Bn.x}")
-        logging.info(f"lower: {Bn.local_bounds}")
+        logging.info(f"lower: {Bn.lower_bounds}")
     else:
         surf.fixed_range(0, mmax, -nmax, nmax, False)
     
@@ -79,26 +94,30 @@ for mmax in range(1, 2):
             # (qs.residuals, 0, 1),
 
             (vmec.iota_edge, 0.4384346834911653, 1),
-            (vmec.iota_axis, 0.412, 1), 
-            (surf.major_radius, R0, 2), # try to keep the major radius fixed
-            (vmec.vacuum_well, -0.05, 1),
-            (qs.residuals, 0, 2)
+            (vmec.mean_iota, 0.412, 1), 
+            (surf.major_radius, R0, 3), # try to keep the major radius fixed
+            (vmec.vacuum_well, -0.01, 2),
+            (qs.residuals, 0, 1)
         ]
     )
     util.proc0_print(f"Free dofs of problem", prob.dof_names)
     if not only_plot:
-        least_squares_mpi_solve(prob, mpi, abs_step=1e-5, grad=True, 
-                                ftol=1e-06, xtol=1e-06, gtol=1e-06)
+        least_squares_mpi_solve(prob, mpi, abs_step=1e-6, grad=True, 
+                                ftol=1e-06, xtol=5e-06, gtol=1e-06)
+        
+        subprocess.check_call(["cp", "hybrid_tokamak/laptop/rotating_ellipse_fb_low_00*", f"hybrid_tokamak/laptop/working_optimization/boundswradius{mmax}/"])
 
     util.proc0_print("At the resolution increase")
     util.proc0_print(" objective function =", prob.objective())
     util.proc0_print(" iota on axis       =", vmec.iota_axis())
     util.proc0_print(" iota edge          =", vmec.iota_edge())
+    util.proc0_print(" mean_iota          =", vmec.mean_iota())
     util.proc0_print(" boundary.R0        =", surf.major_radius()) 
     util.proc0_print(" aspect ratio       =", surf.aspect_ratio())
     util.proc0_print(" equil.volume       =", vmec.volume())
     util.proc0_print(" vmec.vacuum_well   =", vmec.vacuum_well())
     util.proc0_print(" qs.profile         =", qs.profile())
+
 
 def getLgradB(vmec:mhd.Vmec):
     s = np.linspace(0.25, 1, 16)
@@ -146,5 +165,5 @@ if mpi.proc0_world:
     plt.imshow(j_dot_B[0, 1], origin="lower")
     plt.title("Surface current density outer")
 
-    equil.boundary.plot()
+    # equil.boundary.plot()
     plt.show()
