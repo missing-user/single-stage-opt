@@ -3,14 +3,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from matplotlib import cm
-import booz_xform
 import matplotlib.pyplot as plt
 import numpy as np
 
-from simsopt.mhd.vmec_diagnostics import vmec_compute_geometry, vmec_fieldlines
+from simsopt.mhd.vmec_diagnostics import vmec_compute_geometry
 
 import sys
-
+from spec_rename import SpecRename
 
 def getLgradB(vmec:mhd.Vmec):
     vmec.run()
@@ -41,19 +40,19 @@ def pbooz(vmec, sarr, nrows=2, **kwargs):
     for i, js in enumerate(sarr):
         plt.subplot(nrows, cols, i+1)
         booz_xform.surfplot(boozer.bx, i, **kwargs)
-    
-    plt.suptitle(vmec.filename)
+
+    # plt.suptitle(vmec.filename)
 
 if __name__ == "__main__":
     for filename in sys.argv[1:]: 
-        if filename.endswith(".sp"):
-            vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse")
-            spec = mhd.Spec(filename)
-            vmec.boundary = spec.boundary.copy()
-        else:
+        if filename.startswith("input."): 
             vmec = mhd.Vmec(filename)
+        else:
+            vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse")
+            with SpecRename(filename) as specf:
+                spec = mhd.Spec(specf)
+                vmec.boundary = spec.boundary.copy()
         plt.figure()
-        pbooz(vmec, np.array([0.25, 0.5, 0.751, 1.0]), cmap=cm.turbo)
-
-        print(filename, getLgradB(vmec))
+        pbooz(vmec, np.array([0.25, 0.5, 0.751, 1.0]))
+        plt.suptitle(filename+f"\nLgradB={getLgradB(vmec):.3f}")
     plt.show()
