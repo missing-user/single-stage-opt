@@ -9,23 +9,13 @@ import subprocess
 
 def generate_Bn_initial(rotating_ellipse = True, plot=False):
     if rotating_ellipse:
-        equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb.sp", verbose=True)
+        equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", verbose=True)
     else:
         equil = mhd.Spec("hybrid_tokamak/laptop/nfp2_QA_iota0.4.sp", verbose=True)
     hybrid_surface = equil.boundary.copy()
     middle_surface = equil.boundary.copy(range="field period")
     # Called outers instead of outer to align with middle & hybrid <3
     outers_surface = equil.boundary.copy(range="field period")
-
-
-    if plot and equil.freebound:
-        simsopt.geo.plot(
-            [
-                hybrid_surface,
-                equil.computational_boundary
-            ],
-            engine="plotly",
-        )
 
     if rotating_ellipse:
         # Make a circular torus
@@ -67,15 +57,26 @@ def generate_Bn_initial(rotating_ellipse = True, plot=False):
         ax.plot_surface(gamma[:, :, 0], gamma[:, :, 1], gamma[:, :, 2], facecolors = my_col, **kwargs)
         plt.show()
 
-    if plot:
+    hybrid_surface = simsopt.geo.SurfaceRZFourier.from_vmec_input("hybrid_tokamak/laptop/fixedb/QIlowres/input.rot_ellipse_000_000159")
+
+    if plot and equil.freebound:
         simsopt.geo.plot(
             [
                 hybrid_surface,
-                middle_surface,
-                outers_surface,
+                equil.computational_boundary
             ],
             engine="plotly",
         )
+
+    # if plot:
+    #     simsopt.geo.plot(
+    #         [
+    #             hybrid_surface,
+    #             middle_surface,
+    #             outers_surface,
+    #         ],
+    #         engine="plotly",
+    #     )
 
     bdistrib_io.write_netcdf("hybrid_tokamak/wout_nfp2_QA_iota0.4.nc", hybrid_surface, "hybrid_tokamak/wout_nfp2_QA_iota0.4_000_000001.nc")
     bdistrib_io.write_nescin_file("hybrid_tokamak/nescin.msurf", middle_surface)
@@ -119,27 +120,33 @@ def generate_Bn_initial(rotating_ellipse = True, plot=False):
         plt.colorbar()
         plt.show()
         print(BdotN_fft.shape)
-
+    exit()
     import py_spec
     nml = py_spec.SPECNamelist(equil.extension+".sp")
     
     # Force updating the internal arrays since mpol!=equil.mpol
     nml.update_resolution(equil.mpol-1, equil.ntor)
     nml.update_resolution(equil.mpol, equil.ntor)
+    hybrid_surface.change_resolution(equil.mpol, equil.ntor)
+    middle_surface.change_resolution(equil.mpol, equil.ntor)
 
+    N = BdotN_fft.shape[0]*BdotN_fft.shape[1]
+    BdotN_fft /= N
+    scaling = 7.012800640000000E-02/-0.04110736474316339
+    BdotN_fft *= scaling
     for m in range(equil.mpol):
         nmin = -equil.ntor
         if m == 0:
             nmin = 0
         for n in range(nmin, equil.ntor):
-            N = BdotN_fft.shape[0]*BdotN_fft.shape[1]
             # equil.normal_field.set_vns(m, n, BdotN_fft[n, m])
             nml['physicslist']["Rbc"][m][n+nml._Ntor] = hybrid_surface.get_rc(m, n)
             nml['physicslist']["Zbs"][m][n+nml._Ntor] = hybrid_surface.get_zs(m, n) 
             nml['physicslist']["Rwc"][m][n+nml._Ntor] = middle_surface.get_rc(m, n)
             nml['physicslist']["Zws"][m][n+nml._Ntor] = middle_surface.get_zs(m, n) 
             nml['physicslist']["Vns"][m][n+nml._Ntor] = np.imag(BdotN_fft[n, m])
-    nml.write(equil.extension+"_Vns.sp")
+    # nml.write(equil.extension+"_Vns.sp")
+    nml.write(equil.extension+".sp", force=True)
 
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     print(equil.lib.inputlist)

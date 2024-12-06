@@ -14,7 +14,7 @@ import subprocess
 import sys
 import logging
 from simsopt import util
-
+from spec_rename import SpecRename
 import py_spec.output
 mpi = MpiPartition()
 only_plot = False
@@ -22,17 +22,7 @@ freeboundary = False
 if len(sys.argv)>=2:
     # User called the script with arguments, just plot the results
     filename = sys.argv[1]
-    if filename.endswith(".sp.end"):
-        import subprocess
-        subprocess.check_call(["cp", filename, filename[:-4]])
-        filename = filename[:-4]
-        equil = mhd.Spec(filename, mpi, verbose=True, tolerance=1e-10)
-        phiedge = equil.inputlist.phiedge
-        equil.run()
-        surf = equil.boundary
-        results = equil.results
-        only_plot = True
-    elif filename.endswith(".h5"):
+    if filename.endswith(".h5"):
         results = py_spec.output.SPECout(filename)
         phiedge = results.input.physics.phiedge
         surf = mhd.Spec.pyspec_to_simsopt_surf(results, 0)
@@ -41,7 +31,13 @@ if len(sys.argv)>=2:
         freeboundary = True
         print("FREEBOUNDARY")
     else:
-        raise ValueError("Filename must end with .sp.end or .h5")
+        with SpecRename(filename) as specf:
+            equil = mhd.Spec(specf, mpi, verbose=True, tolerance=1e-10)
+            phiedge = equil.inputlist.phiedge
+            equil.run()
+            surf = equil.boundary
+            results = equil.results
+            only_plot = True
     
 
 if not only_plot:
@@ -89,7 +85,7 @@ if not only_plot:
         Bn = equil._normal_field  # This is our new fancy-pants degree of freedom :)
         Bn.fix_all()
 
-        for mmax in range(1, 1):
+        for mmax in range(1, 3):
             nmax = mmax
             # set appropriate bounds for DOFs
             prev_dofs = np.array(Bn.local_dofs_free_status, dtype=bool).copy()
@@ -97,15 +93,15 @@ if not only_plot:
             # Bn.fixed_range(0, mmax, -nmax, nmax, False) # unfix square region
             additional_dofs = np.logical_and(Bn.local_dofs_free_status, np.logical_not(prev_dofs))
             # higher fourier modes crash the simulation more easily
-            Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 2e-2/nmax, Bn.local_full_lower_bounds)
-            Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 2e-2/nmax, Bn.local_full_upper_bounds)
+            Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_lower_bounds)
+            Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_upper_bounds)
 
-    for mmax in range(1, 4):
+    for mmax in range(3, 4):
         nmax = mmax
         if freeboundary:
             # set appropriate bounds for DOFs
             prev_dofs = np.array(Bn.local_dofs_free_status, dtype=bool).copy()
-                
+            Bn.fixed_range(0, (mmax-1), -(nmax-1), (nmax-1), True) # fix previous degrees
             Bn.fixed_range(0, mmax, -nmax, nmax, False) # unfix square region
             additional_dofs = np.logical_and(Bn.local_dofs_free_status, np.logical_not(prev_dofs))
             # higher fourier modes crash the simulation more easily
@@ -132,7 +128,7 @@ if not only_plot:
         ]
         if freeboundary:
              # try to keep the major radius fixed
-            objs.append((surf.major_radius, R0, 3))
+            objs.append((surf.get_rc(0,0), R0, 3))
         else:
             # Since flux isn't constrained, we must fix the aspect ratio
             objs.append((vmec.aspect, 30, 1))

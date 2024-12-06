@@ -1,12 +1,12 @@
 &regcoil_nml
   general_option = 5 ! Check if target is attainable first
-  Nlambda = 8
-  ntheta_coil = 128
-  nzeta_coil = 128
-  ntheta_plasma = 128
-  nzeta_plasma = 128
-  mpol_potential = 16
-  ntor_potential = 16
+  Nlambda = 5
+  ntheta_coil =   48
+  nzeta_coil =    48
+  ntheta_plasma = 48
+  nzeta_plasma =  48
+  mpol_potential = 8
+  ntor_potential = 8
   ! target_option = "rms_Bnormal_normalized"
   ! target_value = 0.02
 

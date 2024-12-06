@@ -26,7 +26,7 @@ do
     cp $RESULT_FILE $INPUT_FILE
 
     # Update the 5th line in the input file
-   sed -i '5s/\(\sphiedge\s*=\s*\)\(.*\)/echo "\1$(printf "%.4E" $(echo "0.004 + '"$i"' * 0.0005" | bc))"/e' $INPUT_FILE
+   sed -i '5s/\(\sphiedge\s*=\s*\)\(.*\)/echo "\1$(printf "%.4E" $(echo "0.003 + '"$i"' * 0.0005" | bc))"/e' $INPUT_FILE
     echo "Iteration $i completed: phiedge incremented by $INCREMENT."
 done
 
