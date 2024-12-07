@@ -14,7 +14,8 @@ import subprocess
 import sys
 import logging
 from simsopt import util
-from spec_rename import SpecRename
+from hybrid_tokamak.laptop.spec_rename import SpecRename
+from hybrid_tokamak.laptop.spec_backoff import SpecBackoff
 import py_spec.output
 mpi = MpiPartition()
 only_plot = False
@@ -32,7 +33,7 @@ if len(sys.argv)>=2:
         print("FREEBOUNDARY")
     else:
         with SpecRename(filename) as specf:
-            equil = mhd.Spec(specf, mpi, verbose=True, tolerance=1e-10)
+            equil = SpecBackoff(specf, mpi, verbose=True, tolerance=1e-10)
             phiedge = equil.inputlist.phiedge
             equil.run()
             surf = equil.boundary
@@ -41,7 +42,7 @@ if len(sys.argv)>=2:
     
 
 if not only_plot:
-    equil = mhd.Spec("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=True, tolerance=1e-10, keep_all_files=True)
+    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=True, tolerance=1e-10, keep_all_files=True)
 
     equil.lib.inputlist.odetol = 1e-6
     equil.lib.inputlist.nptrj[0] = 8
@@ -96,17 +97,17 @@ if not only_plot:
             Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_lower_bounds)
             Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_upper_bounds)
 
-    for mmax in range(3, 4):
+    for mmax in range(3, 6):
         nmax = mmax
         if freeboundary:
             # set appropriate bounds for DOFs
             prev_dofs = np.array(Bn.local_dofs_free_status, dtype=bool).copy()
-            Bn.fixed_range(0, (mmax-1), -(nmax-1), (nmax-1), True) # fix previous degrees
             Bn.fixed_range(0, mmax, -nmax, nmax, False) # unfix square region
+            # Bn.fixed_range(0, (mmax-1), -(nmax-1), (nmax-1), True) # fix previous degrees
             additional_dofs = np.logical_and(Bn.local_dofs_free_status, np.logical_not(prev_dofs))
             # higher fourier modes crash the simulation more easily
-            Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 2e-2, Bn.local_full_lower_bounds)
-            Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 2e-2, Bn.local_full_upper_bounds)
+            Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 4e-2, Bn.local_full_lower_bounds)
+            Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 4e-2, Bn.local_full_upper_bounds)
             logging.info(f"upper: {Bn.upper_bounds}")
             logging.info(f"value: {Bn.x}")
             logging.info(f"lower: {Bn.lower_bounds}")
@@ -127,8 +128,9 @@ if not only_plot:
             (vmec.vacuum_well, -1, -0.005)
         ]
         if freeboundary:
-             # try to keep the major radius fixed
-            objs.append((surf.get_rc(0,0), R0, 3))
+            # try to keep the major radius fixed
+            R0func = simsopt.make_optimizable(lambda surf: surf.get_rc(0,0), surf)
+            objs.append((R0func.J, R0, 3))
         else:
             # Since flux isn't constrained, we must fix the aspect ratio
             objs.append((vmec.aspect, 30, 1))
@@ -200,8 +202,11 @@ util.proc0_print(" LgradB             =", getLgradB(vmec))
 if not only_plot:
     inputlist = equil.lib.inputlist
     inputlist.nptrj[0] = 16
+    if freeboundary:
+        inputlist.nptrj[1] = 32
     inputlist.nppts = 512
     inputlist.odetol = 1e-7
+    equil.recompute_bell()
     equil.run()
 
 
