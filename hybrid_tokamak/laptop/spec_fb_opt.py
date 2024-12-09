@@ -1,3 +1,4 @@
+
 import glob
 import os
 import simsopt
@@ -18,6 +19,22 @@ from hybrid_tokamak.laptop.spec_rename import SpecRename
 from hybrid_tokamak.laptop.spec_backoff import SpecBackoff
 import py_spec.output
 mpi = MpiPartition()
+
+util.log(logging.INFO)
+
+class VmecSpecDependency(mhd.Vmec):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        # Simsopt SurfaceRZFourier apparently wasn't intended to be used as an output of an Optimizable, so the dependency isn't propagated automatically.
+        # I suspect this is a bug, but for now we'll just manually propagate the dependency
+        for parent in self.boundary.parents:
+            parent.run()
+            logging.debug(f"Parent {parent} has been forced to run by {self}")
+        
+        super().run(*args, **kwargs)
+
 only_plot = False
 freeboundary = False
 if len(sys.argv)>=2:
@@ -42,14 +59,13 @@ if len(sys.argv)>=2:
     
 
 if not only_plot:
-    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=True, tolerance=1e-10, keep_all_files=True)
+    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=False, tolerance=1e-10, keep_all_files=True)
 
     equil.lib.inputlist.odetol = 1e-6
     equil.lib.inputlist.nptrj[0] = 8
     equil.lib.inputlist.nptrj[1] = 2
     equil.lib.inputlist.nppts = 32
     phiedge = equil.inputlist.phiedge
-    util.initialize_logging("freeboundary.log", mpi=True, level=logging.INFO)
 
     if freeboundary:
         # equil.activate_profile("tflux")
@@ -64,7 +80,7 @@ if not only_plot:
     else:
         surf = equil.boundary.copy()
 
-vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False)
+vmec = VmecSpecDependency("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False)
 vmec.boundary = surf
 vmec.indata.phiedge = phiedge
 qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 16), helicity_m=1, helicity_n=0, ntheta=32, nphi=32)
@@ -83,7 +99,7 @@ if not only_plot:
     # equil.unfix("phiedge")
 
     if freeboundary:
-        Bn = equil._normal_field  # This is our new fancy-pants degree of freedom :)
+        Bn = equil.normal_field  # This is our new fancy-pants degree of freedom :)
         Bn.fix_all()
 
         for mmax in range(1, 3):
@@ -117,14 +133,12 @@ if not only_plot:
             surf.upper_bounds =  0.3 * np.ones_like(surf.upper_bounds)
             surf.fix("rc(0,0)")
         
-        objs =[
+        objs = [
                 (vmec.mean_iota, 0.4384346834911653, 1),  
-                (vmec.vacuum_well, -0.01, 1),
                 (qs.residuals, 0, 10),
                 # (qs2.residuals, 0, 10)
             ]
         tulples_nlc = [
-            (vmec.mean_iota, 0.41, 0.47), 
             (vmec.vacuum_well, -1, -0.005)
         ]
         if freeboundary:
