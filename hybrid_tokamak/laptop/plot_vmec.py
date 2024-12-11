@@ -1,8 +1,9 @@
+import latexplot
+import matplotlib.pyplot as plt
 import simsopt.mhd
 import sys
 import numpy as np
 from simsopt.mhd.vmec_diagnostics import vmec_compute_geometry
-import matplotlib.pyplot as plt
 
 
 def getLgradB(vmec):
@@ -18,16 +19,17 @@ def getLgradB(vmec):
 if __name__ == "__main__": 
     vmecs = [simsopt.mhd.Vmec(filename) for filename in sys.argv[1:]]
     # for phi in [0, np.pi/2, np.pi]:
+    latexplot.figure(1)
     for vmec, filename in zip(vmecs, sys.argv[1:]):
         cross = vmec.boundary.cross_section(0)
         plt.plot(cross[:,0], cross[:,2], label=f"{filename}  LgradB={getLgradB(vmec)}")
     plt.legend()
-    plt.show()
+    latexplot.savenshow("vmec_cross_sections")
     for filename in sys.argv[1:]:
         vmec = simsopt.mhd.Vmec(filename)
         # vmec.boundary.plot(show=False)
-        vmec.boundary.scale(4)
+        vmec.boundary.scale(1)
         vmec.boundary.plot(show=False)
-    plt.show()
+    latexplot.savenshow("vmec_3d_boundaries")
 
     

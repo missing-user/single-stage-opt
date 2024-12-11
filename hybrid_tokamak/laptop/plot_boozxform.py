@@ -1,4 +1,5 @@
 from simsopt import mhd
+import latexplot
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -25,8 +26,9 @@ def pbooz(vmec, sarr, nrows=2, **kwargs):
     import booz_xform
     from matplotlib import cm
     vmec.run()
-
-    boozer = mhd.Boozer(vmec,**kwargs)
+    mpol = kwargs.pop("mpol", 32)
+    ntor = kwargs.pop("ntor", 32)
+    boozer = mhd.Boozer(vmec, mpol, ntor)
     boozer.register(sarr)
     boozer.run()
 
@@ -39,7 +41,7 @@ def pbooz(vmec, sarr, nrows=2, **kwargs):
     cols = int(np.ceil(len(sarr)/nrows))
     for i, js in enumerate(sarr):
         plt.subplot(nrows, cols, i+1)
-        booz_xform.surfplot(boozer.bx, i, **kwargs)
+        booz_xform.surfplot(boozer.bx, i,  **kwargs)
 
     # plt.suptitle(vmec.filename)
 
@@ -52,7 +54,8 @@ if __name__ == "__main__":
             with SpecRename(filename) as specf:
                 spec = mhd.Spec(specf)
                 vmec.boundary = spec.boundary.copy()
-        plt.figure()
-        pbooz(vmec, np.array([0.25, 0.5, 0.751, 1.0]))
-        plt.suptitle(filename+f"\nLgradB={getLgradB(vmec):.3f}")
-    plt.show()
+                latexplot.figure(1, (2,2))
+                pbooz(vmec, np.array([0.25, 0.5, 0.75, 1.0]), ncontours=16)
+                if plt.isinteractive():
+                    plt.suptitle(specf+f"\nLgradB={getLgradB(vmec):.3f}")
+                latexplot.savenshow(specf.replace(".sp", ""))
