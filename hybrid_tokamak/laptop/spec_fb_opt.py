@@ -23,9 +23,6 @@ mpi = MpiPartition()
 util.log(logging.INFO)
 
 class VmecSpecDependency(mhd.Vmec):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def run(self, *args, **kwargs):
         # Simsopt SurfaceRZFourier apparently wasn't intended to be used as an output of an Optimizable, so the dependency isn't propagated automatically.
         # I suspect this is a bug, but for now we'll just manually propagate the dependency
@@ -33,7 +30,7 @@ class VmecSpecDependency(mhd.Vmec):
             parent.run()
             logging.debug(f"Parent {parent} has been forced to run by {self}")
         
-        super().run(*args, **kwargs)
+        return super().run(*args, **kwargs)
 
 only_plot = False
 freeboundary = False
@@ -59,7 +56,7 @@ if len(sys.argv)>=2:
     
 
 if not only_plot:
-    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=False, tolerance=1e-10, keep_all_files=True)
+    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=False, tolerance=1e-10, keep_all_files=True, max_attempts=7)
 
     equil.lib.inputlist.odetol = 1e-6
     equil.lib.inputlist.nptrj[0] = 8
@@ -102,18 +99,18 @@ if not only_plot:
         Bn = equil.normal_field  # This is our new fancy-pants degree of freedom :)
         Bn.fix_all()
 
-        for mmax in range(1, 3):
-            nmax = mmax
-            # set appropriate bounds for DOFs
-            prev_dofs = np.array(Bn.local_dofs_free_status, dtype=bool).copy()
+        # for mmax in range(1, 3):
+        #     nmax = mmax
+        #     # set appropriate bounds for DOFs
+        #     prev_dofs = np.array(Bn.local_dofs_free_status, dtype=bool).copy()
                 
-            # Bn.fixed_range(0, mmax, -nmax, nmax, False) # unfix square region
-            additional_dofs = np.logical_and(Bn.local_dofs_free_status, np.logical_not(prev_dofs))
-            # higher fourier modes crash the simulation more easily
-            Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_lower_bounds)
-            Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_upper_bounds)
+        #     # Bn.fixed_range(0, mmax, -nmax, nmax, False) # unfix square region
+        #     additional_dofs = np.logical_and(Bn.local_dofs_free_status, np.logical_not(prev_dofs))
+        #     # higher fourier modes crash the simulation more easily
+        #     Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_lower_bounds)
+        #     Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_upper_bounds)
 
-    for mmax in range(3, 6):
+    for mmax in range(2, 6):
         nmax = mmax
         if freeboundary:
             # set appropriate bounds for DOFs
@@ -122,8 +119,8 @@ if not only_plot:
             # Bn.fixed_range(0, (mmax-1), -(nmax-1), (nmax-1), True) # fix previous degrees
             additional_dofs = np.logical_and(Bn.local_dofs_free_status, np.logical_not(prev_dofs))
             # higher fourier modes crash the simulation more easily
-            Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 4e-2, Bn.local_full_lower_bounds)
-            Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 4e-2, Bn.local_full_upper_bounds)
+            Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 3e-2, Bn.local_full_lower_bounds)
+            Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 3e-2, Bn.local_full_upper_bounds)
             logging.info(f"upper: {Bn.upper_bounds}")
             logging.info(f"value: {Bn.x}")
             logging.info(f"lower: {Bn.lower_bounds}")
@@ -152,11 +149,12 @@ if not only_plot:
             tulples_nlc.append((surf.major_radius, R0-1e-2, R0+1e-2))
 
         prob = objectives.LeastSquaresProblem.from_tuples(objs)
+        
         # prob = objectives.ConstrainedProblem(qs.total, tulples_nlc)
         util.proc0_print(f"Free dofs of problem", prob.dof_names)
         kwargs = { }
         if freeboundary:
-            kwargs["abs_step"] = 2e-6
+            kwargs["abs_step"] = 1e-6
             kwargs["xtol"] = 5e-06
             # Larger steps in the magnetic field modes are required to get clean gradients
         if isinstance(prob, objectives.ConstrainedProblem):
@@ -175,7 +173,7 @@ if not only_plot:
                 srcpath = "input.rot_ellipse_*"
             subprocess.check_call(["mkdir", "-p", destpath])
             for filename in glob.glob(srcpath):
-                subprocess.check_call(["cp", filename, destpath])
+                subprocess.check_call(["mv", filename, destpath])
         
         util.proc0_print("At the resolution increase")
         util.proc0_print(" objective function =", prob.objective())
@@ -209,6 +207,19 @@ util.proc0_print(" vmec.vacuum_well   =", vmec.vacuum_well())
 util.proc0_print(" qs.profile         =", qs.profile())
 util.proc0_print(" qs2.profile        =", qs2.J())
 util.proc0_print(" LgradB             =", getLgradB(vmec))
+
+if only_plot:
+    objs = [
+                (vmec.mean_iota, 0.4384346834911653, 1),  
+                (qs.residuals, 0, 10),
+                # (qs2.residuals, 0, 10)
+            ]
+    if freeboundary:
+        # try to keep the major radius fixed
+        R0func = simsopt.make_optimizable(lambda surf: surf.get_rc(0,0), surf)
+        objs.append((R0func.J, R0, 3))
+    prob = objectives.LeastSquaresProblem.from_tuples(objs)
+    util.proc0_print(" objective function =", prob.objective())
 
 # prob.plot_graph(show=False)
 
