@@ -13,7 +13,7 @@ from spec_rename import SpecRename
 
 def getLgradB(vmec:mhd.Vmec):
     vmec.run()
-    s = [0.25, 1.0]
+    s = [0.25, 0.5, 1.0]
     ntheta = 32
     nphi = 32
     theta = np.linspace(0, 2 * np.pi, ntheta, endpoint=False)

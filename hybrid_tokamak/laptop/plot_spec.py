@@ -34,10 +34,15 @@ for filename in filenames:
     print("Failed to read ", filename)
     continue
 
-  fig, axs = plt.subplots(1, 3, sharex=True,  figsize=(12, 4))
-  
+  fig, axs = plt.subplots(2, 3, sharex=True,  figsize=(12, 4))
+  axs = axs.flatten()
   out.plot_kam_surface(ax=axs[0])
-  out.plot_poincare(ax=axs[1], s=1, )
+  out.plot_iota(ax=axs[1])
   out.plot_modB(np.linspace(-1+1e-6, 1, 64), np.linspace(0, 2*np.pi, 64), lvol=[0], ax=axs[2])
+  def angle2idx(angle):
+    return int(np.floor(angle / (2*np.pi) * out.poincare.R.shape[2]))
+  out.plot_poincare(ax=axs[3], s=1, )
+  out.plot_poincare(ax=axs[4], s=1, toroidalIdx=angle2idx(0.5*np.pi))
+  out.plot_poincare(ax=axs[5], s=1, toroidalIdx=angle2idx(np.pi))
   
 plt.show()
