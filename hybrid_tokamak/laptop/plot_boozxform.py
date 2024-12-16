@@ -58,4 +58,6 @@ if __name__ == "__main__":
                 pbooz(vmec, np.array([0.25, 0.5, 0.75, 1.0]), ncontours=16)
                 if plt.isinteractive():
                     plt.suptitle(specf+f"\nLgradB={getLgradB(vmec):.3f}")
+                else:
+                    print(specf+f"\nLgradB={getLgradB(vmec):.3f}")
                 latexplot.savenshow(specf.replace(".sp", ""))

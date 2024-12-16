@@ -20,6 +20,7 @@ if __name__ == "__main__":
     vmecs = [simsopt.mhd.Vmec(filename) for filename in sys.argv[1:]]
     # for phi in [0, np.pi/2, np.pi]:
     latexplot.figure(1)
+    latexplot.set_cmap(len(vmecs))
     for vmec, filename in zip(vmecs, sys.argv[1:]):
         cross = vmec.boundary.cross_section(0)
         plt.plot(cross[:,0], cross[:,2], label=f"{filename}  LgradB={getLgradB(vmec)}")

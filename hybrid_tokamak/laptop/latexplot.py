@@ -27,7 +27,21 @@ plt.rcParams.update({
     'axes.facecolor' : 'FFFFFF'  
 })
 
-plt.rcParams['axes.prop_cycle'] = matplotlib.cycler(color=[plt.cm.plasma(i/10) for i in range(10)])
+def set_cmap(cycles:int|list=10):
+    if isinstance(cycles, list) and len(cycles) > 0:
+        assert sum(cycles) > 0
+        scaling = 1/(1-0.5/len(cycles))
+        midevalpoints = [i/len(cycles) * scaling for i in range(len(cycles))] 
+        evalpoints = []
+        for i, cat in zip(midevalpoints, cycles):
+            ministep = 0.5/len(cycles)/cat
+            for j in range(cat):
+                evalpoints.append(i + ministep*j)
+    else:
+      evalpoints = [i/cycles for i in range(cycles)]
+            
+    plt.rcParams['axes.prop_cycle'] = matplotlib.cycler(color=[plt.cm.plasma(e) for e in evalpoints])
+    plt.rcParams['image.cmap'] = 'plasma'
 
 
 # 483.6969pt. text width
