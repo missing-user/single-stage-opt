@@ -1,4 +1,4 @@
-# Steps to preprocess files
+# Steps to preprocess files (using DESC)
 
 Copy all relevant files
 
