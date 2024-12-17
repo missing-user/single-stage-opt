@@ -1,5 +1,9 @@
-from simsopt import mhd
+import sys
+sys.path.append("/home/missinguser/CSE/single-stage-opt/hybrid_tokamak/laptop/")
 import latexplot
+latexplot.set_cmap(4)
+
+from simsopt import mhd
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -9,7 +13,6 @@ import numpy as np
 
 from simsopt.mhd.vmec_diagnostics import vmec_compute_geometry
 
-import sys
 from spec_rename import SpecRename
 
 def getLgradB(vmec:mhd.Vmec):
@@ -54,7 +57,7 @@ if __name__ == "__main__":
             with SpecRename(filename) as specf:
                 spec = mhd.Spec(specf)
                 vmec.boundary = spec.boundary.copy()
-                latexplot.figure(1, (2,2))
+                latexplot.figure()
                 pbooz(vmec, np.array([0.25, 0.5, 0.75, 1.0]), ncontours=16)
                 if plt.isinteractive():
                     plt.suptitle(specf+f"\nLgradB={getLgradB(vmec):.3f}")

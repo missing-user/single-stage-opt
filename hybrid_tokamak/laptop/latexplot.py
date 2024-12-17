@@ -24,7 +24,7 @@ plt.rcParams.update({
     "xtick.labelsize": 8,
     "ytick.labelsize": 8,
 
-    'axes.facecolor' : 'FFFFFF'  
+    'axes.facecolor' : 'FFFFFF'
 })
 
 def set_cmap(cycles:int|list=10):
@@ -77,7 +77,7 @@ def get_size(fraction=0.5, subplots=(1, 1), width_pt=483.6969):
 
     return (fig_width_in, fig_height_in)
 
-def figure(fraction=0.5, subplots=(1, 1)):
+def figure(fraction=1, subplots=(1, 1)):
     return plt.figure(figsize=get_size(fraction, subplots))
 
 def savenshow(basename):
@@ -86,3 +86,6 @@ def savenshow(basename):
     plt.savefig(basename + ".pdf")
     plt.savefig(basename + ".png")
     plt.show()
+
+# Default figure is 1 line wide
+matplotlib.rcParams['figure.figsize'] = get_size(1)
