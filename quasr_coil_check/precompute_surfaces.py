@@ -1,13 +1,13 @@
-import bdistrib_io
 import numpy as np
 import simsopt.field
 import simsopt
 import simsopt.geo
 import os
-import json
 
 from pathlib import Path
-import surfgen
+
+from quasr_coil_check import bdistrib_io
+from quasr_coil_check import surfgen
 
 
 def compute_B(coils, surface) -> np.ndarray:
@@ -106,8 +106,9 @@ if __name__ == "__main__":
         min_ID = int(sys.argv[1])
         max_ID = int(sys.argv[2])
     else:
-        print("plase supply a (min and) max ID until which to process the files. \nAdd the --plot argument to view surfaces with selected IDs")
-
+        print(
+            "plase supply a (min and) max ID until which to process the files. \nAdd the --plot argument to view surfaces with selected IDs"
+        )
 
     print("Computing surfaces up to ID", max_ID)
     for i in range(min_ID, max_ID):

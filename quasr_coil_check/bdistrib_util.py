@@ -56,8 +56,8 @@ def rate_of_efficiency_sequence(
             feas_fit = fit_exponential_rate(
                 feasibility_seq[:max_index_for_fit])
 
-            eff_key = "efficiency " + svd_s_key.split("_")[-1]
-            feas_key = "feasibility " + svd_s_key.split("_")[-1]
+            eff_key = "efficiency rate " + svd_s_key.split("_")[-1]
+            feas_key = "feasibility rate " + svd_s_key.split("_")[-1]
 
             if plot:
                 results[eff_key] = efficiency_seq

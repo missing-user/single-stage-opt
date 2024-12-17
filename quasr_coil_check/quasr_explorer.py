@@ -244,10 +244,7 @@ def correlationplot(dfstore):
                 "n_coils",
                 "qs_error",
                 "log(qs error)",
-                "feasibility middle",
-                "feasibility outer",
                 "total_coil_length",
-                "feasibility transferMatrix",
             ]
         ),
     ]

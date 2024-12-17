@@ -1,18 +1,18 @@
 import simsopt
 import simsopt.geo
 import simsopt.field
-import os
+import subprocess
 from pathlib import Path
 
-import bdistrib_io
-import subprocess
-import precompute_surfaces
+from quasr_coil_check import bdistrib_io
+from quasr_coil_check import precompute_surfaces
 
 
 def bdistrib_for_surfaces(
     plasma_surface: simsopt.geo.SurfaceRZFourier,
     msurf: simsopt.geo.SurfaceRZFourier,
     osurf: simsopt.geo.SurfaceRZFourier,
+    **kwargs
 ):
     bdistrib_io.write_nescin_file("nescin.msurf", msurf)
     bdistrib_io.write_nescin_file("nescin.osurf", osurf)
@@ -29,7 +29,8 @@ def bdistrib_for_surfaces(
                     "nescin_filename_outer": "nescin.osurf",
                 },
             ),
-        ]
+        ],
+        **kwargs
     )
     subprocess.call(
         ["rm", "*.dat"]

@@ -5,8 +5,6 @@ import precompute_surfaces
 import subprocess
 from pathlib import Path
 import os
-if not "regcoil" in os.getenv("PATH"):
-    raise RuntimeError("The regcoil executable should be added to the PATH environment variable:\nexport PATH=\"$PATH:/home/<user>/regcoil\"")
 
 REGCOIL_IN_TMP_PATH = "regcoil_in.python_generated"
 REGCOIL_OUT_TMP_PATH = "regcoil_out.python_generated.nc"
@@ -17,6 +15,11 @@ def run_regcoil(
     winding_surface: simsopt.geo.Surface | str,
     ID: int = -1,  # ID is only used for debugging, will appear as a comment in the input file
 ):
+    if not "regcoil" in os.getenv("PATH"):
+        raise RuntimeError(
+            'The regcoil executable should be added to the PATH environment variable:\nexport PATH="$PATH:/home/<user>/regcoil"'
+        )
+
     plasma_path = "wout_surfaces_python_generated.nc"
     winding_path = "nescin.winding_surface"
     if isinstance(plasma_surface, simsopt.geo.Surface):
@@ -24,7 +27,9 @@ def run_regcoil(
     elif isinstance(plasma_surface, str):
         plasma_path = plasma_surface
     else:
-        raise ValueError(f"InvalidArgument type for plasma_path (was {type(plasma_path)}) in run_regcoil")  
+        raise ValueError(
+            f"InvalidArgument type for plasma_path (was {type(plasma_path)}) in run_regcoil"
+        )
 
     if isinstance(winding_surface, simsopt.geo.Surface):
         bdistrib_io.write_nescin_file(
@@ -32,7 +37,9 @@ def run_regcoil(
     elif isinstance(winding_surface, str):
         winding_path = winding_surface
     else:
-        raise ValueError(f"InvalidArgument type for winding_surface (was {type(winding_surface)}) in run_regcoil")    
+        raise ValueError(
+            f"InvalidArgument type for winding_surface (was {type(winding_surface)}) in run_regcoil"
+        )
     surface_resolution = 128
     input_string = f"""&regcoil_nml
   general_option = 5 ! Check if target is attainable first
