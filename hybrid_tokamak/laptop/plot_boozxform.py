@@ -1,5 +1,4 @@
 import sys
-sys.path.append("/home/missinguser/CSE/single-stage-opt/hybrid_tokamak/laptop/")
 import latexplot
 latexplot.set_cmap(4)
 
