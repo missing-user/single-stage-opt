@@ -37,7 +37,7 @@ def read_netcdf(filename: str):
         return surface
 
 
-def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
+def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier, filename_template=None):
     # HACK: To generate the template file
     # B_VOL_AVG_TARGET = 5.865 #T
     # magnetic_scaling = B_VOL_AVG_TARGET / equil.wout.volavgB
@@ -59,10 +59,10 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
     #     f.variables["bsubvmnc"][:] *= magnetic_scaling
     #     f.variables["bsupumnc"][:] *= magnetic_scaling
     #     f.variables["bsupvmnc"][:] *= magnetic_scaling
-
-    filename_template = (
-        f"{os.path.dirname(__file__)}/wout_d23p4_tm_reference_LgradBscaling.nc"
-    )
+    if filename_template is None:
+        filename_template = (
+            f"{os.path.dirname(__file__)}/wout_d23p4_tm_reference_LgradBscaling.nc"
+        )
     os.system(f"cp {filename_template} {filename}")
 
     # Copy the file on disk with a new name, open with r+ and overwrite it.
@@ -77,16 +77,16 @@ def write_netcdf(filename, surface: simsopt.geo.SurfaceRZFourier):
                 f"Dropping resolution when exporting surface to netcdf_file, due to my terrible, hacky implementation! Original: {surface.mpol, surface.ntor} now: {mpol, ntor}"
             )
         surface.change_resolution(mpol, ntor)
-        f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor:] * 5
-        f.variables["zmns"][:] = -surface.zs.flatten()[surface.ntor:] * 5
+        f.variables["rmnc"][:] = surface.rc.flatten()[surface.ntor:] 
+        f.variables["zmns"][:] = -surface.zs.flatten()[surface.ntor:] 
 
         # Divided by old nfp multiplied by new nfp
         f.variables["xn"][:] = (
             f.variables["xn"][()] / f.variables["nfp"][()] * surface.nfp
         )
         f.variables["nfp"][()] = surface.nfp
-        f.variables["Rmajor_p"][()] = surface.major_radius() * 5
-        f.variables["Aminor_p"][()] = surface.minor_radius() * 5
+        f.variables["Rmajor_p"][()] = surface.major_radius() 
+        f.variables["Aminor_p"][()] = surface.minor_radius() 
 
     return filename.replace("wout_", "")
 

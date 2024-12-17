@@ -1,8 +1,13 @@
 .vscode/
 quasr_coil_check/QUASR_db/
 *.dat 
-*.sp.end
 *.sp.h5 
+*.sp.DF
+threed1.*
+jxbout_rot_ellipse*
+parvmecinfo.txt
+mercier.rot_ellipse*
+wout_rot_ellipse*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
