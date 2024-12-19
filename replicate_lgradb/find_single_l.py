@@ -1,14 +1,17 @@
+import IPython
 import numpy as np
 import scipy.optimize
 import simsopt
+import simsopt.mhd
 import simsopt.geo
 import subprocess
 import os
 
-if os.path.dirname(__file__) == os.getcwd():
-    raise RuntimeError(
-        "This script should have been excecuted as a module:\npython -m replicate_lgradb.find_single_l"
-    )
+if IPython.get_ipython() is None:
+    if os.path.dirname(__file__) == os.getcwd():
+        raise RuntimeError(
+            "This script should have been excecuted as a module:\npython -m replicate_lgradb.find_single_l"
+        )
 if not "regcoil" in os.getenv("PATH"):
     raise RuntimeError(
         'The regcoil executable should be added to the PATH environment variable:\nexport PATH="$PATH:/home/<user>/regcoil"'
@@ -16,11 +19,18 @@ if not "regcoil" in os.getenv("PATH"):
 from quasr_coil_check import bdistrib_io
 from scipy.io import netcdf_file
 
+from joblib import Memory
+location = './regcoil_distance_cache'
+memory = Memory(location, verbose=0)
 
-REGCOIL_IN_TMP_PATH = "replicate_lgradb/tmp/regcoil_in.python_generated"
-REGCOIL_OUT_TMP_PATH = "replicate_lgradb/tmp/regcoil_out.python_generated.nc"
-PLASMA_PATH = "replicate_lgradb/tmp/wout_surfaces_python_generated.nc"
+import tempfile
+tmpdir = tempfile.mkdtemp()
+REGCOIL_IN_TMP_PATH = os.path.join(tmpdir,"regcoil_in.python_generated")
+REGCOIL_OUT_TMP_PATH = os.path.join(tmpdir,"regcoil_out.python_generated.nc")
+PLASMA_PATH = os.path.join(tmpdir,"wout_surfaces_python_generated.nc")
 
+# REGCOIL_OUT_TMP_PATH = "replicate_lgradb/tmp/regcoil_out.python_generated.nc"
+# PLASMA_PATH = "replicate_lgradb/tmp/wout_surfaces_python_generated.nc"
 
 class Memoization:
     def __init__(self, f):
@@ -33,12 +43,11 @@ class Memoization:
         print("kinfty_at", *args, "=", self.dict[args])
         return self.dict[args]
 
-
-def find_regcoil_distance(lcfs):
+@memory.cache(ignore=["lcfs"])
+def find_regcoil_distance(lcfs, idx=None, target_k = 17.16e6):
     """Find the distance the coil surface must be separated from the plasma, to fulfill
     |K|_\infty = 17.16 MA/m
     The optimization is bounded, the surface offset is ]0, 0.5["""
-    target_k = 17.16e6
 
     @Memoization
     def kinfty_at_regcoil_distance(l: float):
@@ -53,8 +62,13 @@ def find_regcoil_distance(lcfs):
         with netcdf_file(REGCOIL_OUT_TMP_PATH, "r", mmap=False) as f:
             k_infty = f.variables["max_K"][()]
             return k_infty[-1]
-
-    search_interval = np.array([1e-2, 0.35]) * 5
+        raise RuntimeError("Failed to open regcoil output file")
+    
+    if isinstance(lcfs, simsopt.geo.SurfaceRZFourier):
+        R0 = lcfs.major_radius()
+    else:
+        R0 = lcfs.boundary.major_radius()
+    search_interval = np.array([0.2, R0/2]) 
     search_initial_points = np.linspace(
         search_interval[0], search_interval[1], 5)
     kinftys = np.array(
@@ -77,15 +91,20 @@ def find_regcoil_distance(lcfs):
     print("scipy.optimize in interval", search_interval)
 
     opt_result = scipy.optimize.root_scalar(
-        lambda l: kinfty_at_regcoil_distance(float(l) - target_k),
+        lambda l: kinfty_at_regcoil_distance(float(l))  - target_k,
         bracket=search_interval.tolist(),  # tol=target_k * 1e-6, method="brentq"
     )
     l_result = opt_result.root
     return l_result
 
 
-def run_regcoil_fixed_dist(plasma_surface: simsopt.geo.Surface, distance: float):
-    bdistrib_io.write_netcdf(PLASMA_PATH, plasma_surface.to_RZFourier())
+def run_regcoil_fixed_dist(plasma_surface: simsopt.geo.Surface|simsopt.mhd.Vmec, distance: float):
+    plasma_path = PLASMA_PATH
+    if isinstance(plasma_surface, simsopt.geo.SurfaceRZFourier):
+        bdistrib_io.write_netcdf(PLASMA_PATH, plasma_surface.to_RZFourier())
+    elif(isinstance(plasma_surface, simsopt.mhd.Vmec)): 
+        plasma_surface.run()
+        plasma_path = plasma_surface.output_file
     cwd = os.path.dirname(REGCOIL_IN_TMP_PATH)
 
     surface_resolution = 96
@@ -96,13 +115,13 @@ def run_regcoil_fixed_dist(plasma_surface: simsopt.geo.Surface, distance: float)
   ntheta_plasma = {surface_resolution}
   nzeta_coil = {surface_resolution}
   nzeta_plasma = {surface_resolution}
-  mpol_potential = 16
-  ntor_potential = 16
+  mpol_potential = 12
+  ntor_potential = 12
   target_option = "rms_Bnormal"
   target_value = 0.01 ! Threshold value for LgradB paper
 
   geometry_option_plasma = 2
-  wout_filename='./{PLASMA_PATH.replace(cwd+"/", "")}'
+  wout_filename='{plasma_path.replace(cwd+"/", "")}'
 
   !geometry_option_coil=3
   !nescin_filename = 'winding_path.replace(cwd+"/", "")'
@@ -115,5 +134,5 @@ def run_regcoil_fixed_dist(plasma_surface: simsopt.geo.Surface, distance: float)
     with open(REGCOIL_IN_TMP_PATH, "w") as f:
         f.write(input_string)
     return subprocess.check_output(
-        ["regcoil", os.path.basename(REGCOIL_IN_TMP_PATH)], cwd=cwd
+        ["regcoil", os.path.basename(REGCOIL_IN_TMP_PATH)], cwd=tmpdir
     )
