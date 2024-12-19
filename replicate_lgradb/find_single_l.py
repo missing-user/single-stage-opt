@@ -20,7 +20,7 @@ from quasr_coil_check import bdistrib_io
 from scipy.io import netcdf_file
 
 from joblib import Memory
-location = './regcoil_distance_cache'
+location = './.cachedir'
 memory = Memory(location, verbose=0)
 
 import tempfile
@@ -68,7 +68,7 @@ def find_regcoil_distance(lcfs, idx=None, target_k = 17.16e6):
         R0 = lcfs.major_radius()
     else:
         R0 = lcfs.boundary.major_radius()
-    search_interval = np.array([0.2, R0/2]) 
+    search_interval = np.array([0.05, R0/2]) 
     search_initial_points = np.linspace(
         search_interval[0], search_interval[1], 5)
     kinftys = np.array(
@@ -78,7 +78,7 @@ def find_regcoil_distance(lcfs, idx=None, target_k = 17.16e6):
     # Comma for tuple unpacking
     (lower_bound_idx,) = np.where(np.isfinite(kinftys) & (kinftys <= target_k))
     if len(lower_bound_idx) == 0:
-        return np.inf
+        return 0
     # Largest lower bound (expects kinftys order to be increasing)
     search_interval[0] = search_initial_points[lower_bound_idx[-1]]
 
@@ -92,7 +92,7 @@ def find_regcoil_distance(lcfs, idx=None, target_k = 17.16e6):
 
     opt_result = scipy.optimize.root_scalar(
         lambda l: kinfty_at_regcoil_distance(float(l))  - target_k,
-        bracket=search_interval.tolist(),  # tol=target_k * 1e-6, method="brentq"
+        bracket=search_interval.tolist(), xtol=2e-5 # tol=target_k * 1e-6, method="brentq"
     )
     l_result = opt_result.root
     return l_result
@@ -107,10 +107,10 @@ def run_regcoil_fixed_dist(plasma_surface: simsopt.geo.Surface|simsopt.mhd.Vmec,
         plasma_path = plasma_surface.output_file
     cwd = os.path.dirname(REGCOIL_IN_TMP_PATH)
 
-    surface_resolution = 96
+    surface_resolution = 64
     input_string = f"""&regcoil_nml
   general_option = 5 ! Check if target is attainable first
-  Nlambda = 16
+  Nlambda = 12
   ntheta_coil = {surface_resolution}
   ntheta_plasma = {surface_resolution}
   nzeta_coil = {surface_resolution}
