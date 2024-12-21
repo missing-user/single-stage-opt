@@ -7,7 +7,7 @@ from spec_rename import SpecRename
 
 filenames = sys.argv[1:]
 
-fig, axs = plt.subplots(2, 3, figsize=latexplot.get_size(1, (2,3)), sharex=True, sharey=True)
+fig, axs = plt.subplots(1, 3, figsize=latexplot.get_size(1, (2,3)), sharex=True, sharey=True)
 axs = axs.flatten()
 
 colors = plt.cm.plasma(np.linspace(0, 1, len(filenames)+1))
@@ -27,8 +27,8 @@ for filename, c, fi in zip(filenames, colors, range(len(filenames))):
   for i, ax in enumerate(axs):  
     label = filename
     label = f"mpol={fi}"
-    out.plot_kam_surface(ntheta=128, ns=[1,2], ax=ax, c=c, label=label, zeta=i*np.pi/len(axs), linewidth=1)
-    ax.set_title(f"Slice $\zeta = {i/len(axs):.2f} \pi$")
+    out.plot_kam_surface(ntheta=128, ns=[1,2], ax=ax, c=c, label=label, zeta=i*np.pi/(len(axs)-1), linewidth=1)
+    ax.set_title(f"Slice $\zeta = {i/(len(axs)-1):.1f} \pi$")
     if i == len(axs)-1 and len(filenames)>1:
       if plt.isinteractive():
         plt.legend(prop={'size': 6})
