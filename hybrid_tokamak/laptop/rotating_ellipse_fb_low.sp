@@ -423,15 +423,15 @@ Vns(7,7)    =  0.000000000000000E+00 Bns(7,7)    = -2.246378558506193E-08 Vnc(7,
  c05xtol     =   1.000000000000000E-10
  c05factor   =   1.000000000000000E-04
  LreadGF     =         T
- mfreeits    =        12
- gBntol      =   2.000000000000000E-06
+ mfreeits    =        16
+ gBntol      =   2.000000000000000E-07
  gBnbld      =   6.660000000000000E-01
  vcasingeps  =   1.000000000000000E-10
- vcasingtol  =   1.000000000000000E-08
+ vcasingtol  =   1.000000000000000E-10
  vcasingits  =         8
  vcasingper  =         1
- vcNt        =       512
- vcNz        =       512
+ vcNt        =       360
+ vcNz        =       360
 /
 &diagnosticslist
  odetol      =   1.000000000000000E-07
