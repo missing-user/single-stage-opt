@@ -1,5 +1,5 @@
 interactive = False
-interactive = True
+# interactive = True
 import matplotlib
 if not interactive:
   matplotlib.use("pgf")
@@ -26,8 +26,7 @@ plt.rcParams.update({
 
     'axes.facecolor' : 'FFFFFF'
 })
-
-def set_cmap(cycles:int|list=10):
+def set_cmap(cycles:int|list=4):
     if isinstance(cycles, list) and len(cycles) > 0:
         assert sum(cycles) > 0
         scaling = 1/(1-0.5/len(cycles))
@@ -42,6 +41,7 @@ def set_cmap(cycles:int|list=10):
             
     plt.rcParams['axes.prop_cycle'] = matplotlib.cycler(color=[plt.cm.plasma(e) for e in evalpoints])
     plt.rcParams['image.cmap'] = 'plasma'
+# set_cmap()
 
 
 # 483.6969pt. text width

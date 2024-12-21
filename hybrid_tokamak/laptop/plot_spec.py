@@ -7,12 +7,12 @@ from spec_rename import SpecRename
 
 filenames = sys.argv[1:]
 
-fig, axs = plt.subplots(2, 3, figsize=latexplot.get_size(1, (2,3)))
+fig, axs = plt.subplots(2, 3, figsize=latexplot.get_size(1, (2,3)), sharex=True, sharey=True)
 axs = axs.flatten()
 
-colors = plt.cm.plasma(np.linspace(0, 1, len(filenames)))
+colors = plt.cm.plasma(np.linspace(0, 1, len(filenames)+1))
 colors = colors[:len(filenames)]
-for filename, c in zip(filenames, colors):
+for filename, c, fi in zip(filenames, colors, range(len(filenames))):
   try:
     out = py_spec.SPECout(filename) 
   except Exception as e: 
@@ -25,16 +25,20 @@ for filename, c in zip(filenames, colors):
     color = c[np.newaxis, :]
 
   for i, ax in enumerate(axs):  
-    out.plot_kam_surface(ntheta=128, ax=ax, c=color, label=filename, zeta=i*np.pi/len(axs), linewidth=1)
+    label = filename
+    label = f"mpol={fi}"
+    out.plot_kam_surface(ntheta=128, ns=[1,2], ax=ax, c=c, label=label, zeta=i*np.pi/len(axs), linewidth=1)
     ax.set_title(f"Slice $\zeta = {i/len(axs):.2f} \pi$")
-    if i == 0 and len(filenames)>1:
+    if i == len(axs)-1 and len(filenames)>1:
       if plt.isinteractive():
         plt.legend(prop={'size': 6})
       else:
         ax.legend()
+    plt.axis("auto")
+    ax.label_outer()
 # plt.legend(filenames)
 latexplot.savenshow("spec_kam_surfaces")
-
+latexplot.set_cmap(32)
 for filename in filenames:
   try:
     out = py_spec.SPECout(filename) 

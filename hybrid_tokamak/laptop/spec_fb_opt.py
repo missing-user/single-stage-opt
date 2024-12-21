@@ -18,9 +18,18 @@ from simsopt import util
 from hybrid_tokamak.laptop.spec_rename import SpecRename
 from hybrid_tokamak.laptop.spec_backoff import SpecBackoff
 import py_spec.output
+
+import hybrid_tokamak.laptop.latexplot as latexplot
 mpi = MpiPartition()
 
 util.log(logging.INFO)
+
+"""
+Run either fixed or quasi-free-boundary spec optimization to compare the results:
+mpiexec -n 4 -map-by node:PE=1 --display map bash -c 'python -m hybrid_tokamak.laptop.spec_fb_opt'
+or:
+mpiexec -n 4 -map-by node:PE=1 --display map bash -c 'python -m hybrid_tokamak.laptop.spec_fb_opt --freeboundary'
+"""
 
 class VmecSpecDependency(mhd.Vmec):
     def run(self, *args, **kwargs):
@@ -56,7 +65,7 @@ if len(sys.argv)>=2:
     
 
 if not only_plot:
-    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=False, tolerance=1e-10, keep_all_files=True, max_attempts=7)
+    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=False, tolerance=1e-10, keep_all_files=False, max_attempts=7)
 
     equil.lib.inputlist.odetol = 1e-6
     equil.lib.inputlist.nptrj[0] = 8
@@ -77,7 +86,7 @@ if not only_plot:
     else:
         surf = equil.boundary.copy()
 
-vmec = VmecSpecDependency("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False)
+vmec = VmecSpecDependency("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False, keep_all_files=False)
 vmec.boundary = surf
 vmec.indata.phiedge = phiedge
 qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 16), helicity_m=1, helicity_n=0, ntheta=32, nphi=32)
@@ -88,9 +97,25 @@ qs2 = mhd.Quasisymmetry(boozer,
 
 # Generate timestamp string for folder name 
 timestampdir = datetime.datetime.now().strftime(("freeb_" if freeboundary else "fixb_") +"%m-%d-%H-%M-%S")
-subprocess.check_output(["mkdir","-p", timestampdir])
+
+
+def make_objs():
+    objs = [
+            (vmec.mean_iota, 0.5784346834911653, 0.01),  
+            (qs.residuals, 0, 1),
+            # (qs2.residuals, 0, 10)
+        ]
+    if freeboundary:
+        # try to keep the major radius fixed
+        R0func = simsopt.make_optimizable(lambda surf: surf.get_rc(0,0), surf)
+        objs.append((R0func.J, R0, 0.1))
+    else:
+        # Since flux isn't constrained, we must fix the aspect ratio
+        objs.append((vmec.aspect, 19.59577963477568, 1))
+    return objs
 
 if not only_plot:
+    subprocess.check_output(["mkdir","-p", timestampdir])
     surf.fix_all()
     R0 = 1 #surf.major_radius()
     # equil.unfix("phiedge")
@@ -110,7 +135,7 @@ if not only_plot:
         #     Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_lower_bounds)
         #     Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 5e-2/nmax, Bn.local_full_upper_bounds)
 
-    for mmax in range(2, 6):
+    for mmax in range(1, 6):
         nmax = mmax
         if freeboundary:
             # set appropriate bounds for DOFs
@@ -130,40 +155,26 @@ if not only_plot:
             surf.upper_bounds =  0.3 * np.ones_like(surf.upper_bounds)
             surf.fix("rc(0,0)")
         
-        objs = [
-                (vmec.mean_iota, 0.4384346834911653, 1),  
-                (qs.residuals, 0, 10),
-                # (qs2.residuals, 0, 10)
-            ]
-        tulples_nlc = [
-            (vmec.vacuum_well, -1, -0.005)
-        ]
-        if freeboundary:
-            # try to keep the major radius fixed
-            R0func = simsopt.make_optimizable(lambda surf: surf.get_rc(0,0), surf)
-            objs.append((R0func.J, R0, 3))
-        else:
-            # Since flux isn't constrained, we must fix the aspect ratio
-            objs.append((vmec.aspect, 30, 1))
-            tulples_nlc.append((vmec.aspect, 29, 31))
-            tulples_nlc.append((surf.major_radius, R0-1e-2, R0+1e-2))
-
+        objs = make_objs() 
         prob = objectives.LeastSquaresProblem.from_tuples(objs)
+        # latexplot.figure()
+        # prob.plot_graph(show=False)
+        # latexplot.savenshow("dependency_graph")
+
         
         # prob = objectives.ConstrainedProblem(qs.total, tulples_nlc)
         util.proc0_print(f"Free dofs of problem", prob.dof_names)
         kwargs = { }
         if freeboundary:
-            kwargs["abs_step"] = 1e-6
-            kwargs["xtol"] = 5e-06
             # Larger steps in the magnetic field modes are required to get clean gradients
-        if isinstance(prob, objectives.ConstrainedProblem):
-            constrained_mpi_solve(prob, mpi, grad=True, options={"maxiter":140}, **kwargs)
-        else:
-            if freeboundary:
-                kwargs["max_nfev"] = 30
-            
-            least_squares_mpi_solve(prob, mpi, grad=True, **kwargs)
+            kwargs["abs_step"] = 1e-6
+            kwargs["xtol"] = 2e-06
+            kwargs["ftol"] = 1e-4
+        
+        if freeboundary:
+            kwargs["max_nfev"] = 30
+        
+        least_squares_mpi_solve(prob, mpi, grad=True, **kwargs)
         
         if mpi.proc0_world:
             destpath = os.path.join(timestampdir, f"mpol{mmax}/")
@@ -205,23 +216,16 @@ util.proc0_print(" aspect ratio       =", surf.aspect_ratio())
 util.proc0_print(" equil.volume       =", vmec.volume())
 util.proc0_print(" vmec.vacuum_well   =", vmec.vacuum_well())
 util.proc0_print(" qs.profile         =", qs.profile())
+util.proc0_print(" qs.total         =", qs.total())
 util.proc0_print(" qs2.profile        =", qs2.J())
+util.proc0_print(" qs2.norm        =", np.linalg.norm(qs2.J()))
 util.proc0_print(" LgradB             =", getLgradB(vmec))
 
 if only_plot:
-    objs = [
-                (vmec.mean_iota, 0.4384346834911653, 1),  
-                (qs.residuals, 0, 10),
-                # (qs2.residuals, 0, 10)
-            ]
-    if freeboundary:
-        # try to keep the major radius fixed
-        R0func = simsopt.make_optimizable(lambda surf: surf.get_rc(0,0), surf)
-        objs.append((R0func.J, R0, 3))
+    objs = make_objs()
     prob = objectives.LeastSquaresProblem.from_tuples(objs)
     util.proc0_print(" objective function =", prob.objective())
 
-# prob.plot_graph(show=False)
 
 # Run the final iteration with a higher poincare resolution
 if not only_plot:
@@ -238,7 +242,7 @@ if not only_plot:
 if mpi.proc0_world:
     if not only_plot:
         results = equil.results
-    surf.plot(engine="plotly")
+    # surf.plot(engine="plotly")
     results.plot_poincare()
     results.plot_iota()
     results.plot_kam_surface()

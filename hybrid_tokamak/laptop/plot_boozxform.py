@@ -28,6 +28,7 @@ def pbooz(vmec, sarr, nrows=2, **kwargs):
     import booz_xform
     from matplotlib import cm
     vmec.run()
+    print("aspect", vmec.boundary.aspect_ratio())
     mpol = kwargs.pop("mpol", 32)
     ntor = kwargs.pop("ntor", 32)
     boozer = mhd.Boozer(vmec, mpol, ntor)
