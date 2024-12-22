@@ -31,6 +31,8 @@ class SpecRename(object):
                     self.have_to_delete = True
                 self.filename = sp_file
                 return
+            else:
+                raise ValueError(f"File {end_file} does not exist")
         raise ValueError("filename should end with .sp, .sp.end or .sp.h5")
     def __enter__(self):
         return self.filename

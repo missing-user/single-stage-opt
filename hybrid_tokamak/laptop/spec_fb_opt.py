@@ -108,7 +108,7 @@ def make_objs():
     if freeboundary:
         # try to keep the major radius fixed
         R0func = simsopt.make_optimizable(lambda surf: surf.get_rc(0,0), surf)
-        objs.append((R0func.J, R0, 0.1))
+        objs.append((R0func.J, R0, 1))
     else:
         # Since flux isn't constrained, we must fix the aspect ratio
         objs.append((vmec.aspect, 19.59577963477568, 1))

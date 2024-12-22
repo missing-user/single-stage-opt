@@ -42,25 +42,34 @@ def pbooz(vmec, sarr, nrows=2, **kwargs):
 
     nrows = 2
     cols = int(np.ceil(len(sarr)/nrows))
+    fig, axs = plt.subplots(nrows, cols, figsize=latexplot.get_size(1, (nrows, cols)), sharex=True, sharey=True)    
+    axs = axs.flatten()
     for i, js in enumerate(sarr):
-        plt.subplot(nrows, cols, i+1)
-        booz_xform.surfplot(boozer.bx, i,  **kwargs)
+        plt.sca(axs[i])
+        booz_xform.surfplot(boozer.bx, i, **kwargs)
+        if i < nrows*(cols-1):
+            plt.xlabel("")
+        if i % nrows > 0:
+            plt.ylabel("")
+        plt.gca().label_outer()
+        # axs[i].set_xlabel(r"$\theta$ [$^\circ$]")
 
     # plt.suptitle(vmec.filename)
 
 if __name__ == "__main__":
     for filename in sys.argv[1:]: 
         if filename.startswith("input."): 
-            vmec = mhd.Vmec(filename)
+            vmec = mhd.Vmec(filename, verbose=False)
+            specf = filename.replace("input.", "")
         else:
-            vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse")
+            vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", verbose=False)
             with SpecRename(filename) as specf:
+                print(f"renamed {filename} to {specf}")
                 spec = mhd.Spec(specf)
                 vmec.boundary = spec.boundary.copy()
-                latexplot.figure()
-                pbooz(vmec, np.array([0.25, 0.5, 0.75, 1.0]), ncontours=16)
-                if plt.isinteractive():
-                    plt.suptitle(specf+f"\nLgradB={getLgradB(vmec):.3f}")
-                else:
-                    print(specf+f"\nLgradB={getLgradB(vmec):.3f}")
-                latexplot.savenshow(specf.replace(".sp", ""))
+        pbooz(vmec, np.array([0.25, 0.5, 0.75, 1.0]), ncontours=16)
+        if plt.isinteractive():
+            plt.suptitle(specf+f"\nLgradB={getLgradB(vmec):.3f}")
+        else:
+            print(specf+f"\nLgradB={getLgradB(vmec):.3f}")
+        latexplot.savenshow(specf.replace(".sp", "")+"pbooz")
