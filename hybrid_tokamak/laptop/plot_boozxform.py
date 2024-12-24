@@ -49,7 +49,7 @@ def pbooz(vmec, sarr, nrows=2, **kwargs):
         booz_xform.surfplot(boozer.bx, i, **kwargs)
         if i < nrows*(cols-1):
             plt.xlabel("")
-        if i % nrows > 0:
+        if i % cols > 0:
             plt.ylabel("")
         plt.gca().label_outer()
         # axs[i].set_xlabel(r"$\theta$ [$^\circ$]")
@@ -65,7 +65,7 @@ if __name__ == "__main__":
             vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", verbose=False)
             with SpecRename(filename) as specf:
                 print(f"renamed {filename} to {specf}")
-                spec = mhd.Spec(specf)
+                spec = mhd.Spec(specf, tolerance=1e-10)
                 vmec.boundary = spec.boundary.copy()
         pbooz(vmec, np.array([0.25, 0.5, 0.75, 1.0]), ncontours=16)
         if plt.isinteractive():
