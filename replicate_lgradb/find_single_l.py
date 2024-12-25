@@ -68,9 +68,9 @@ def find_regcoil_distance(lcfs, idx=None, target_k = 17.16e6):
         R0 = lcfs.major_radius()
     else:
         R0 = lcfs.boundary.major_radius()
-    search_interval = np.array([0.05, R0/2]) 
+    search_interval = np.array([0.02, (2*R0)/3]) 
     search_initial_points = np.linspace(
-        search_interval[0], search_interval[1], 5)
+        search_interval[0], search_interval[1], 4)
     kinftys = np.array(
         [kinfty_at_regcoil_distance(float(l)) for l in search_initial_points]
     )
@@ -98,7 +98,8 @@ def find_regcoil_distance(lcfs, idx=None, target_k = 17.16e6):
     return l_result
 
 
-def run_regcoil_fixed_dist(plasma_surface: simsopt.geo.Surface|simsopt.mhd.Vmec, distance: float):
+def run_regcoil_fixed_dist(plasma_surface: simsopt.geo.Surface|simsopt.mhd.Vmec, distance: float, 
+    surface_resolution = 128,fourier_resolution = 14):
     plasma_path = PLASMA_PATH
     if isinstance(plasma_surface, simsopt.geo.SurfaceRZFourier):
         bdistrib_io.write_netcdf(PLASMA_PATH, plasma_surface.to_RZFourier())
@@ -115,8 +116,8 @@ def run_regcoil_fixed_dist(plasma_surface: simsopt.geo.Surface|simsopt.mhd.Vmec,
   ntheta_plasma = {surface_resolution}
   nzeta_coil = {surface_resolution}
   nzeta_plasma = {surface_resolution}
-  mpol_potential = 12
-  ntor_potential = 12
+  mpol_potential = {fourier_resolution}
+  ntor_potential = {fourier_resolution}
   target_option = "rms_Bnormal"
   target_value = 0.01 ! Threshold value for LgradB paper
 
