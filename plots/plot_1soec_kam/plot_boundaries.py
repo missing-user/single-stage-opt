@@ -10,13 +10,7 @@ from simsopt import mhd
 from simsopt import geo
 from spec_rename import SpecRename
 
-filenames = sys.argv[1:]
-filename = filenames[0]
-latexplot.figure()
 
-with SpecRename(filename) as specf:
-    spec = mhd.Spec(specf, verbose=False, tolerance=1e-10)
-    surf = spec.boundary.to_RZFourier()
 def rotate_to_x_plane(crosssec, phi):
     """
     Rotate points in the toroidal cross-section to the x-plane.
@@ -41,16 +35,30 @@ def rotate_to_x_plane(crosssec, phi):
 
 def plot_surf(boundary):
     for phi, label in zip([0, np.pi/2, np.pi], ["$\phi = 0$", "$\phi = \pi/(2 n_{fp})$", "$\phi = \pi/n_{fp}$"]):
+        phi = phi / boundary.nfp
         cross = boundary.cross_section(phi, np.linspace(0, 1, 128, endpoint=True))
         rotated = rotate_to_x_plane(cross, phi)
         plt.plot(rotated[:,0], rotated[:,2], label=label)
 
-plot_surf(surf)
-compb = spec.computational_boundary.cross_section(0, np.linspace(0, 1, 128, endpoint=True)) 
-plt.plot(compb[:,0], compb[:,2], c="black", label="computational boundary")
+    plt.xlabel("R [m]")
+    plt.ylabel("Z [m]")
+    plt.axis("equal")
+    plt.legend()
 
-plt.legend()
-plt.xlabel("X [m]")
-plt.ylabel("Z [m]")
-plt.axis("equal")
-latexplot.savenshow(filename.replace(".sp.end", "")+"_boundaries")
+if __name__ == "__main__":
+    filenames = sys.argv[1:]
+    filename = filenames[0]
+    latexplot.figure()
+
+    with SpecRename(filename) as specf:
+        spec = mhd.Spec(specf, verbose=False, tolerance=1e-10)
+        surf = spec.boundary.to_RZFourier()
+
+    plot_surf(surf)
+    compb = spec.computational_boundary.cross_section(0, np.linspace(0, 1, 128, endpoint=True)) 
+    plt.plot(compb[:,0], compb[:,2], c="black", label="computational boundary")
+    plt.legend()
+    latexplot.savenshow(filename.replace(".sp.end", "")+"_boundaries")
+    latexplot.figure()
+    surf.plot(close=True)
+    latexplot.savenshow(filename.replace(".sp.end", "")+"_3d")

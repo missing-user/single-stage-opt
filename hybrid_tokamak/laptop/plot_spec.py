@@ -6,6 +6,8 @@ import py_spec
 import sys
 from spec_rename import SpecRename
 
+plot_boundary = True
+plot_boundary = False
 filenames = sys.argv[1:]
 if len(filenames) >1:
   fig, axs = plt.subplots(1, 3, figsize=latexplot.get_size(1, (2,3)), sharex=True, sharey=True)
@@ -13,6 +15,9 @@ if len(filenames) >1:
 else:
   fig, axs = plt.subplots(1, 1, figsize=latexplot.get_size(1))
   axs = [axs] * 3
+
+def dof_from_mpol(mpol):
+  return mpol*(mpol*2+1)+mpol 
 
 colors = plt.cm.plasma(np.linspace(0, 1, len(filenames)+1))
 colors = colors[:len(filenames)]
@@ -27,28 +32,35 @@ for filename, c, fi in zip(filenames, colors, range(len(filenames))):
 
   for i, ax in enumerate(axs):  
     label = filename
-    label = f"mpol={fi}"
+    label = f"M=N={fi}"
+    # label = f"{dof_from_mpol(fi)} DOFs"
 
-    title = f"Slice $\zeta = {i/(len(axs)-1):.1f} \pi$"
+    title = f"Slice $\phi = {i/(len(axs)-1):.1f} \pi" +"/ n_{fp}$"
     ns = [1]
     if len(filenames) == 1:
       color = plt.cm.plasma(i/(len(axs)))
       label = title
-    out.plot_kam_surface(ntheta=128, ns=ns, ax=ax, c=None, label=label, zeta=i*np.pi/(len(axs)-1), linewidth=1)
+    if i != 0:
+      label = None
+
+    out.plot_kam_surface(ntheta=128, ns=ns, ax=ax, c=color, label=label, zeta=i*np.pi/(len(axs)-1), linewidth=1)
     ax.set_title(title)
-    if i == len(axs)-1 :
+    if fi == len(filenames)-1 and plot_boundary:
+      out.plot_kam_surface(ntheta=128, ns=[2], ax=ax, c="black", label="$\mathcal{D}$", zeta=0, linewidth=1)
+    if i == 0 and fi == len(filenames)-1:
       if plt.isinteractive():
-        plt.legend(prop={'size': 6})
+        fig.legend(prop={'size': 6}, loc="outside lower right") 
       else:
-        ax.legend()
+        fig.legend(loc="outside lower right")
 
     plt.axis("auto")
     ax.label_outer()
     if len(filenames) == 1 and i < len(axs)-1:
       continue
-    out.plot_kam_surface(ntheta=128, ns=[2], ax=ax, c="black", label="computational boundary", zeta=0, linewidth=1)
+plt.axis("auto")
 # plt.legend(filenames)
 latexplot.savenshow(filename.replace(".sp.h5", "")+"kam")
+print("Saved", filename.replace(".sp.h5", "")+"kam")
 latexplot.set_cmap(32)
 for filename in filenames:
   try:

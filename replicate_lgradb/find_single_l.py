@@ -108,7 +108,6 @@ def run_regcoil_fixed_dist(plasma_surface: simsopt.geo.Surface|simsopt.mhd.Vmec,
         plasma_path = plasma_surface.output_file
     cwd = os.path.dirname(REGCOIL_IN_TMP_PATH)
 
-    surface_resolution = 64
     input_string = f"""&regcoil_nml
   general_option = 5 ! Check if target is attainable first
   Nlambda = 12
