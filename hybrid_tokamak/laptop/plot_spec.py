@@ -16,11 +16,15 @@ else:
   fig, axs = plt.subplots(1, 1, figsize=latexplot.get_size(1))
   axs = [axs] * 3
 
+if len(filenames) == 1:
+  plot_boundary = True
+
 def dof_from_mpol(mpol):
   return mpol*(mpol*2+1)+mpol 
 
-colors = plt.cm.plasma(np.linspace(0, 1, len(filenames)+1))
-colors = colors[:len(filenames)]
+colors = plt.cm.plasma(np.linspace(0, 1, len(filenames), endpoint=True))
+colors = np.array(list(reversed(colors)))
+# colors = np.array([plt.cm.tab10(i) for i in range(len(filenames))])
 for filename, c, fi in zip(filenames, colors, range(len(filenames))):
   try:
     out = py_spec.SPECout(filename) 
@@ -53,11 +57,15 @@ for filename, c, fi in zip(filenames, colors, range(len(filenames))):
       else:
         fig.legend(loc="outside lower right")
 
-    plt.axis("auto")
+    ax.axis("auto")
     ax.label_outer()
     if len(filenames) == 1 and i < len(axs)-1:
       continue
-plt.axis("auto")
+
+if len(filenames) == 1:
+  plt.axis("equal") 
+else:
+  plt.axis("auto")
 # plt.legend(filenames)
 latexplot.savenshow(filename.replace(".sp.h5", "")+"kam")
 print("Saved", filename.replace(".sp.h5", "")+"kam")
