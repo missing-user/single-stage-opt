@@ -107,7 +107,7 @@ def vs_plot(x_data, y_data, labels=None):
             xy1=(0, reg.intercept),
             slope=reg.slope,
             color="k",
-            label=f"Linear fit {i}: $R^2$ = {reg.rvalue:.2f}",
+            label=f"Linear fit {i}: $R^2$ = {reg.rvalue**2:.3f}",
         )
 
     plt.xlabel(x_label)
@@ -277,10 +277,10 @@ if __name__ == "__main__":
         if LgradB < 0.05:#! or len(desc_outputs) <= 5:
             latexplot.set_cmap(len(coils))
             latexplot.figure()
-            cross = vmec.boundary.cross_section(0, thetas=128)
+            cross = vmec.boundary.cross_section(0, np.linspace(0, 1, 128, endpoint=True))
             plt.subplot(2, 2, 1)
             plt.plot(cross[:,0], cross[:,2], label=f"{filename}  LgradB={LgradB}")
-            cross = vmec.boundary.cross_section(np.pi/2, thetas=128)
+            cross = vmec.boundary.cross_section(np.pi/2/vmec.boundary.nfp, np.linspace(0, 1, 128, endpoint=True))
             plt.plot(cross[:,1], cross[:,2], label=f"{filename}  LgradB={LgradB}")
             plt.subplot(2, 2, 2)
             plt.imshow(LgradBs[-1]) 

@@ -115,7 +115,7 @@ for prop, propval in many_properties.items():
             xy1=(0, reg.intercept),
             slope=reg.slope,
             color="k",
-            label=f"Linear fit {prop}: $R^2$ = {reg.rvalue:.2f}",
+            label=f"Linear fit {prop}: $R^2$ = {reg.rvalue**2:.3f}",
         )
 plt.xlabel(r"$L_{REGCOIL}$")
 plt.ylabel("Rate of increase $\\gamma$")
