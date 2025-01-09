@@ -3,6 +3,7 @@ interactive = False
 import matplotlib
 if not interactive:
   matplotlib.use("pgf")
+#   matplotlib.use("pdf")
 import matplotlib.pyplot as plt
 
 fontsize =  10.95# pt
@@ -38,7 +39,9 @@ def set_cmap(cycles:int|list=4):
                 evalpoints.append(i + ministep*j)
     else:
       evalpoints = [i/cycles for i in range(cycles)]
-            
+      if cycles == 2:
+          evalpoints = [0, 0.7]
+
     plt.rcParams['axes.prop_cycle'] = matplotlib.cycler(color=[plt.cm.plasma(e) for e in evalpoints])
     plt.rcParams['image.cmap'] = 'plasma'
 # set_cmap()
@@ -46,7 +49,7 @@ def set_cmap(cycles:int|list=4):
 
 # 483.6969pt. text width
 # Shamelessly stolen from https://jwalton.info/Matplotlib-latex-PGF/
-def get_size(fraction=0.5, subplots=(1, 1), width_pt=483.6969):
+def get_size(fraction=1, subplots=(1, 1), width_pt=483.6969):
     """Set figure dimensions to sit nicely in our document.
 
     Parameters
@@ -82,9 +85,9 @@ def figure(fraction=1, subplots=(1, 1)):
 
 def savenshow(basename):
     plt.tight_layout()
-    plt.savefig(basename + ".pgf")
-    plt.savefig(basename + ".pdf")
     plt.savefig(basename + ".png")
+    plt.savefig(basename + ".pdf")
+    plt.savefig(basename + ".pgf")
     plt.show()
 
 # Default figure is 1 line wide

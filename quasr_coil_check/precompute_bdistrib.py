@@ -18,7 +18,7 @@ def bdistrib_for_surfaces(
     bdistrib_io.write_nescin_file("nescin.osurf", osurf)
     subprocess.check_call(
         [
-            "../bdistrib/bdistrib",
+            "./bdistrib/bdistrib",
             bdistrib_io.write_bdistribin(
                 bdistrib_io.write_netcdf(
                     "wout_surfaces_python_generated.nc", plasma_surface
@@ -55,6 +55,9 @@ if __name__ == "__main__":
         if Path(bdistrib_io.get_file_path(i, "simsopt")).exists():
             surfaces = precompute_surfaces.cached_get_surfaces(i)
 
+            if surfaces is None:
+                continue
+
             bdistrib_out_path = bdistrib_io.get_file_path(i, "bdistrib")
             Path(bdistrib_out_path).parent.mkdir(parents=True, exist_ok=True)
             bdistrib_for_surfaces(
@@ -62,4 +65,5 @@ if __name__ == "__main__":
             )
             Path("bdistrib_out.python_generated.nc").rename(bdistrib_out_path)
         else:
-            print("Skipping", i)
+            pass
+            # print("Skipping", i)

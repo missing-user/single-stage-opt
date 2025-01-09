@@ -16,13 +16,31 @@ else:
   fig, axs = plt.subplots(1, 1, figsize=latexplot.get_size(1))
   axs = [axs] * 3
 
+
+fig, axs = plt.subplots(2, 3, figsize=latexplot.get_size(1, (4,3)), sharex=True, sharey=True)
+axs_bot = axs[1,:].flatten()
+axs = axs[0,:].flatten()
+
+import plot_vmec
+fnames = [
+  "fixb_12-31-16-42-24/mpol1/input.rot_ellipse_000_000000", 
+  "fixb_12-31-16-42-24/mpol1/input.rot_ellipse_000_000051", 
+  "fixb_12-31-16-42-24/mpol2/input.rot_ellipse_000_000192", 
+  "fixb_12-31-16-42-24/mpol3/input.rot_ellipse_000_000456", 
+  "fixb_12-31-16-42-24/mpol4/input.rot_ellipse_000_000948",  
+  "fixb_12-31-16-42-24/mpol5/input.rot_ellipse_000_001330",
+]
+from simsopt import mhd
+vmecs = [mhd.Vmec(filename) for filename in fnames]
+plot_vmec.compare_crosssections(vmecs, axs=axs_bot)
+
 if len(filenames) == 1:
   plot_boundary = True
 
 def dof_from_mpol(mpol):
   return mpol*(mpol*2+1)+mpol 
 
-colors = plt.cm.plasma(np.linspace(0, 1, len(filenames), endpoint=True))
+colors = plt.cm.plasma(np.linspace(0, 1, len(filenames), endpoint=False))
 colors = np.array(list(reversed(colors)))
 # colors = np.array([plt.cm.tab10(i) for i in range(len(filenames))])
 for filename, c, fi in zip(filenames, colors, range(len(filenames))):
@@ -39,7 +57,7 @@ for filename, c, fi in zip(filenames, colors, range(len(filenames))):
     label = f"M=N={fi}"
     # label = f"{dof_from_mpol(fi)} DOFs"
 
-    title = f"Slice $\phi = {i/(len(axs)-1):.1f} \pi" +"/ n_{fp}$"
+    title = f"QFB $\phi = {i/(len(axs)-1):.1f} \pi" +"/ n_{fp}$"
     ns = [1]
     if len(filenames) == 1:
       color = plt.cm.plasma(i/(len(axs)))
@@ -51,7 +69,7 @@ for filename, c, fi in zip(filenames, colors, range(len(filenames))):
     ax.set_title(title)
     if fi == len(filenames)-1 and plot_boundary:
       out.plot_kam_surface(ntheta=128, ns=[2], ax=ax, c="black", label="$\mathcal{D}$", zeta=0, linewidth=1)
-    if i == 0 and fi == len(filenames)-1:
+    if i == 0 and fi == len(filenames)-1 and False:
       if plt.isinteractive():
         fig.legend(prop={'size': 6}, loc="outside lower right") 
       else:

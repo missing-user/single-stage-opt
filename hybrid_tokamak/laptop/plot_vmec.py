@@ -63,8 +63,8 @@ def plot_vmec(surf, phis=[0, np.pi/2, np.pi], **kwargs):
     plt.axis("equal")
     plt.legend()
 
-def plot_single_vmec(vmec, phi=0.0,**kwargs):
-    surf = SurfaceRZFourier.from_vmec_input(filename)
+def plot_single_vmec(vmec:simsopt.mhd.Vmec, phi=0.0,**kwargs):
+    surf = SurfaceRZFourier.from_vmec_input(vmec.input_file)
     phi = phi / surf.nfp
     cross = surf.cross_section(phi, np.linspace(0, 1, 128, endpoint=True))
     rotated = rotate_to_x_plane(cross, phi)
@@ -77,6 +77,7 @@ def plot_single_vmec(vmec, phi=0.0,**kwargs):
 
 def compare_crosssections(vmecs, axs=None):
     # for phi in [0, np.pi/2, np.pi]:
+    fig=plt.gcf()
     
     # Same behavior as plot_spec
     plot_boundary = False
@@ -91,8 +92,8 @@ def compare_crosssections(vmecs, axs=None):
     def dof_from_mpol(mpol):
         return mpol*(mpol*2+1)+mpol 
 
-    colors = plt.cm.plasma(np.linspace(0, 1, len(vmecs)+1))
-    colors = colors[:len(vmecs)]
+    colors = plt.cm.plasma(np.linspace(0, 1, len(vmecs), endpoint=False))
+    colors = np.array(list(reversed(colors)))
 
     for vmec, c, fi in zip(vmecs, colors, range(len(vmecs))):
         filename = vmec.input_file
@@ -104,7 +105,7 @@ def compare_crosssections(vmecs, axs=None):
             label = f"M=N={fi}"
             # label = f"{dof_from_mpol(fi)} DOFs"
 
-            title = f"Slice $\phi = {i/(len(axs)-1):.1f} \pi" +"/ n_{fp}$"
+            title = f"Fixed-boundary $\phi = {i/(len(axs)-1):.1f} \pi" +"/ n_{fp}$"
             ns = [1]
             if len(vmecs) == 1:
                 color = plt.cm.plasma(i/(len(axs)))

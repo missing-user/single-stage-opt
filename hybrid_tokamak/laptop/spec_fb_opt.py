@@ -46,26 +46,29 @@ freeboundary = False
 if len(sys.argv)>=2:
     # User called the script with arguments, just plot the results
     filename = sys.argv[1]
-    if filename.endswith(".h5"):
-        results = py_spec.output.SPECout(filename)
-        phiedge = results.input.physics.phiedge
-        surf = mhd.Spec.pyspec_to_simsopt_surf(results, 0)
-        only_plot = True
-    elif filename == "--freeboundary":
+    if filename == "--freeboundary":
         freeboundary = True
         print("FREEBOUNDARY")
     else:
         with SpecRename(filename) as specf:
             equil = SpecBackoff(specf, mpi, verbose=True, tolerance=1e-10)
             phiedge = equil.inputlist.phiedge
-            equil.run()
-            surf = equil.boundary
-            results = equil.results
-            only_plot = True
+            if filename.endswith(".h5"):
+                results = py_spec.output.SPECout(filename)
+                phiedge = results.input.physics.phiedge
+                surf = mhd.Spec.pyspec_to_simsopt_surf(results, 0)
+                aspect_target = surf.aspect_ratio()
+                only_plot = True
+            else:
+                equil.run()
+                surf = equil.boundary
+                results = equil.results
+                aspect_target = surf.aspect_ratio()
+                only_plot = True
     
 
 if not only_plot:
-    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=False, tolerance=1e-10, keep_all_files=False, max_attempts=7)
+    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=True, tolerance=1e-10, keep_all_files=False, max_attempts=3)
 
     equil.lib.inputlist.odetol = 1e-6
     equil.lib.inputlist.nptrj[0] = 8
@@ -85,6 +88,7 @@ if not only_plot:
         assert equil.lib.inputlist.lfreebound, "SPEC must be in Freeboundary mode"
     else:
         surf = equil.boundary.copy()
+    aspect_target = surf.aspect_ratio()
 
 vmec = VmecSpecDependency("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False, keep_all_files=False)
 vmec.boundary = surf
@@ -93,7 +97,7 @@ qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 16), heli
 boozer = mhd.Boozer(vmec)
 qs2 = mhd.Quasisymmetry(boozer, 
                    0.5, # Radius to target
-                   helicity_m=1, helicity_n=0) # (M, N) you want in |B|
+                   helicity_m=qs.helicity_m, helicity_n=qs.helicity_n) # (M, N) you want in |B|
 
 # Generate timestamp string for folder name 
 timestampdir = datetime.datetime.now().strftime(("freeb_" if freeboundary else "fixb_") +"%m-%d-%H-%M-%S")
@@ -101,7 +105,7 @@ timestampdir = datetime.datetime.now().strftime(("freeb_" if freeboundary else "
 
 def make_objs():
     objs = [
-            (vmec.mean_iota, 0.5784346834911653, 0.01),  
+            (vmec.mean_iota, 0.4384346834911653, 0.1),  
             (qs.residuals, 0, 1),
             # (qs2.residuals, 0, 10)
         ]
@@ -111,7 +115,7 @@ def make_objs():
         objs.append((R0func.J, R0, 1))
     else:
         # Since flux isn't constrained, we must fix the aspect ratio
-        objs.append((vmec.aspect, 19.59577963477568, 1))
+        objs.append((vmec.aspect, aspect_target, 1))
     return objs
 
 if not only_plot:
@@ -144,8 +148,8 @@ if not only_plot:
             # Bn.fixed_range(0, (mmax-1), -(nmax-1), (nmax-1), True) # fix previous degrees
             additional_dofs = np.logical_and(Bn.local_dofs_free_status, np.logical_not(prev_dofs))
             # higher fourier modes crash the simulation more easily
-            Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 3e-2, Bn.local_full_lower_bounds)
-            Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 3e-2, Bn.local_full_upper_bounds)
+            Bn.local_full_lower_bounds = np.where(additional_dofs, Bn.local_full_x - np.ones_like(Bn.local_full_x) * 20e-2, Bn.local_full_lower_bounds)
+            Bn.local_full_upper_bounds = np.where(additional_dofs, Bn.local_full_x + np.ones_like(Bn.local_full_x) * 20e-2, Bn.local_full_upper_bounds)
             logging.info(f"upper: {Bn.upper_bounds}")
             logging.info(f"value: {Bn.x}")
             logging.info(f"lower: {Bn.lower_bounds}")
@@ -167,12 +171,15 @@ if not only_plot:
         kwargs = { }
         if freeboundary:
             # Larger steps in the magnetic field modes are required to get clean gradients
-            kwargs["abs_step"] = 1e-6
-            kwargs["xtol"] = 2e-06
+            kwargs["abs_step"] = 8e-7
+            kwargs["xtol"] = 1e-06
             kwargs["ftol"] = 1e-4
         
         if freeboundary:
             kwargs["max_nfev"] = 30
+
+        if not freeboundary:
+            kwargs["ftol"] = 1e-4
         
         least_squares_mpi_solve(prob, mpi, grad=True, **kwargs)
         
@@ -230,22 +237,27 @@ if only_plot:
 # Run the final iteration with a higher poincare resolution
 if not only_plot:
     inputlist = equil.lib.inputlist
-    inputlist.nptrj[0] = 16
     if freeboundary:
+        inputlist.nptrj[0] = 16
         inputlist.nptrj[1] = 32
     inputlist.nppts = 512
     inputlist.odetol = 1e-7
     equil.recompute_bell()
     equil.run()
 
-
 if mpi.proc0_world:
     if not only_plot:
         results = equil.results
+    geo.plot([surf, equil.computational_boundary.copy(range="field period")], close=True, engine="plotly")
     # surf.plot(engine="plotly")
-    results.plot_poincare()
+    # latexplot.savenshow(filename+"_kam")
+    latexplot.set_cmap(8)
+    results.plot_kam_surface(linewidth=1, c="black")
+    results.plot_poincare(ax=plt.gca())
+    plt.legend(["magnetic axis", "$\mathcal{D}$", "$\mathcal{S}$",  "Poincare trace"])
+    latexplot.savenshow(filename+"_poincare")
     results.plot_iota()
-    results.plot_kam_surface()
+    latexplot.savenshow(filename+"_iotaprofile")
     # equil.results.plot_modB(np.linspace(-0.999, 1, 32), np.linspace(0, 2*np.pi, 32), )
     plt.figure()
     plt.plot(qs.profile())
@@ -259,4 +271,14 @@ if mpi.proc0_world:
     # plt.subplot(1, 2, 2)
     # plt.imshow(j_dot_B[0, 1], origin="lower")
     # plt.title("Surface current density outer")
-    plt.show()
+    latexplot.savenshow(filename+"_qsprofile")
+
+    # Copy the poincare stuff
+    destpath = os.path.join(timestampdir, "")
+    if freeboundary:
+        srcpath ="hybrid_tokamak/laptop/rotating_ellipse_fb_low_000_*"
+    else:
+        srcpath = "input.rot_ellipse_*"
+    subprocess.check_call(["mkdir", "-p", destpath])
+    for filename in glob.glob(srcpath):
+        subprocess.check_call(["mv", filename, destpath])
