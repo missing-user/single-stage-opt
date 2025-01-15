@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import simsopt
 import simsopt.geo
+from scipy.stats import linregress
 
 import dash
 import dash.dash_table
@@ -293,8 +294,25 @@ def scatterplot(dfstore, xscalar, yscalar, colorscalar, logatirhmic):
             log_x="xlog" in logatirhmic,
             log_y="ylog" in logatirhmic,
             hover_data=my_hover_data,
+            # trendline="ols",
+            # trendline_options=dict(
+            #     log_x="xlog" in logatirhmic, log_y="ylog" in logatirhmic
+            # ),
             custom_data=["ID"],
         )
+        # results = px.get_trendline_results(fig)
+        print(df["nfp"])
+        decay_rates = df[df["nfp"].astype(int) == 3].dropna(subset=[yscalar, xscalar])[
+            yscalar
+        ]
+        distances2 = df[df["nfp"].astype(int) == 3].dropna(subset=[yscalar, xscalar])[
+            xscalar
+        ]
+        print(decay_rates)
+        print(distances2)
+        reg = linregress(distances2, decay_rates)
+
+        print(reg, "R^2=", reg.rvalue**2)
     else:
         fig = px.scatter_matrix(
             data_frame=df,
