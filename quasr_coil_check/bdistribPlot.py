@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-
+import sys
+sys.path.append("./hybrid_tokamak/laptop/")
+import latexplot
+latexplot.set_cmap(2)
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -198,14 +201,9 @@ def main(fname):
     figureNum += 1
     fig = plt.figure(figureNum)
     plt.semilogy(
-        svd_s_inductance_plasma_outer / paper_factor,
-        ".m",
-        label="Efficiency sequence",
-    )
-    plt.semilogy(
         Bnormal_from_const_v_coils_inductance,
         ".r",
-        label="Bnormal_from_const_v_coils_inductance",
+        label="Inductance sequence",
     )
     plt.semilogy(
         Bnormal_from_const_v_coils_inductance / svd_s_inductance_plasma_outer,
@@ -220,70 +218,6 @@ def main(fname):
     plt.legend(fontsize="x-small", loc=3)
     plt.title("(Fig 14.)")
     plt.grid()
-
-    ########################################################
-    # check_orthogonality plot
-    ########################################################
-
-    if check_orthogonality:
-        figureNum += 1
-        fig = plt.figure(figureNum)
-        fig.patch.set_facecolor("white")
-
-        numRows = 1
-        numCols = 3
-        th = 1e-17
-
-        plt.subplot(numRows, numCols, 1)
-        data = np.abs(should_be_identity_plasma.transpose())
-        data[data < th] = th
-        plt.pcolormesh(np.log10(data))
-        plt.gca().invert_yaxis()
-        plt.colorbar()
-        plt.title("should_be_identity_plasma")
-
-        plt.subplot(numRows, numCols, 2)
-        data = np.abs(should_be_identity_middle.transpose())
-        data[data < th] = th
-        plt.pcolormesh(np.log10(data))
-        plt.gca().invert_yaxis()
-        plt.colorbar()
-        plt.title("should_be_identity_middle")
-
-        plt.subplot(numRows, numCols, 3)
-        data = np.abs(should_be_identity_outer.transpose())
-        data[data < th] = th
-        plt.pcolormesh(np.log10(data))
-        plt.gca().invert_yaxis()
-        plt.colorbar()
-        plt.title("should_be_identity_outer")
-
-        maximizeWindow()
-
-        figureNum += 1
-        fig = plt.figure(figureNum)
-        fig.patch.set_facecolor("white")
-
-        numRows = 1
-        numCols = 1
-        th = 1e-17
-
-        data = np.abs(np.diag(should_be_identity_plasma) - 1)
-        data[data < th] = th
-        plt.plot(np.log10(data), label="plasma")
-
-        data = np.abs(np.diag(should_be_identity_middle) - 1)
-        data[data < th] = th
-        plt.plot(np.log10(data), label="middle")
-
-        data = np.abs(np.diag(should_be_identity_outer) - 1)
-        data[data < th] = th
-        plt.plot(np.log10(data), label="outer")
-
-        plt.title("log10(diag(should_be_identity)-1)    This should be very small.")
-        plt.legend()
-
-        maximizeWindow()
 
     ########################################################
     # For 3D plotting, 'close' the arrays in u and v
@@ -576,105 +510,6 @@ def main(fname):
             fontsize="small",
         )
 
-    ########################################################
-    # Now make 3D surface plot
-    ########################################################
-
-    # figureNum += 1
-    # fig = plt.figure(figureNum)
-    # fig.patch.set_facecolor("white")
-    # ax = fig.gca(projection="3d")
-    # ax.plot_surface(
-    #     r_plasma[:, :, 0],
-    #     r_plasma[:, :, 1],
-    #     r_plasma[:, :, 2],
-    #     rstride=1,
-    #     cstride=1,
-    #     color="r",
-    #     linewidth=0,
-    # )
-
-    # maxIndex = int(nvl_middle * 0.7)
-    # ax.plot_surface(
-    #     r_middle[:maxIndex, :, 0],
-    #     r_middle[:maxIndex, :, 1],
-    #     r_middle[:maxIndex, :, 2],
-    #     rstride=1,
-    #     cstride=1,
-    #     color="m",
-    #     linewidth=0,
-    # )
-
-    # maxIndex = int(nvl_outer * 0.55)
-    # minIndex = int(nvl_outer * 0.15)
-    # ax.plot_surface(
-    #     r_outer[minIndex:maxIndex, :, 0],
-    #     r_outer[minIndex:maxIndex, :, 1],
-    #     r_outer[minIndex:maxIndex, :, 2],
-    #     rstride=1,
-    #     cstride=1,
-    #     color="b",
-    #     linewidth=0,
-    # )
-
-    # plotLMax = r_outer.max()
-    # ax.auto_scale_xyz(
-    #     [-plotLMax, plotLMax], [-plotLMax, plotLMax], [-plotLMax, plotLMax]
-    # )
-
-    ########################################################
-    # Plot overlap of transfer matrix and inductance matrix singular vectors
-    ########################################################
-
-    if overlap_exists:
-        # execfile('/global/homes/l/landrema/scripts/colormaps.py')
-        ##myCmap=viridis
-        # myCmap=plasma
-        # myCmap = inferno
-        myCmap = "inferno"
-
-        figureNum += 1
-        fig = plt.figure(figureNum)
-        fig.patch.set_facecolor("white")
-
-        numRows = 1
-        numCols = 2
-        my_clim = (-4.0, 0.0)
-
-        plt.subplot(numRows, numCols, 1)
-        # plt.imshow(np.log10(np.abs(overlap_plasma)),interpolation='none',clim=my_clim)
-        # plt.imshow(np.log10(np.abs(overlap_plasma.transpose())),interpolation='none',clim=my_clim,cmap=myCmap)
-        plt.imshow(
-            np.log10(np.abs(overlap_plasma.transpose())),
-            interpolation="none",
-            clim=my_clim,
-        )
-        # plt.gca().xaxis.tick_top()
-        plt.colorbar()
-        plt.title(
-            "Log10 overlap of transfer and inductance singular vectors on plasma surface"
-        )
-        plt.xlabel("Index of inductance singular vector")
-        plt.ylabel("Index of transfer singular vector")
-
-        plt.subplot(numRows, numCols, 2)
-        # plt.imshow(np.log10(np.abs(overlap_middle)),interpolation='none',clim=my_clim)
-        # plt.imshow(np.log10(np.abs(overlap_middle.transpose())),interpolation='none',clim=my_clim,cmap=myCmap)
-        plt.imshow(
-            np.log10(np.abs(overlap_middle.transpose())),
-            interpolation="none",
-            clim=my_clim,
-        )
-        # plt.gca().xaxis.tick_top()
-        plt.colorbar()
-        plt.title(
-            "Log10 overlap of transfer and inductance singular vectors on middle surface"
-        )
-        plt.xlabel("Index of inductance singular vector")
-        plt.ylabel("Index of transfer singular vector")
-
-        maximizeWindow()
-
     #######################################################
     # Plot quantities related to 1/R field
     ########################################################
@@ -814,6 +649,140 @@ def main(fname):
 
     plt.show()
 
+    ########################################################
+    # Now make the publication plots
+    
+    def fit_exponential_rate(sequence):
+        x = np.linspace(0, 1, len(sequence))
+
+        # log-linear fit 
+        fit = np.polyfit(x, np.log(sequence), 1)
+        a_initial = np.exp(fit[1]) #sequence[0]
+        b_initial = fit[0]
+
+        # Exponential curve fit using log linear as initial guess
+        # Define the exponential function for fitting
+        def exp_model(x, a, b, c):
+            return a * np.exp(b * x) + c
+        
+        return exp_model(x, a_initial, b_initial, 0)
+
+    # latexplot.figure()
+
+    fig, axd = plt.subplot_mosaic(
+        [[f"svd{i}" for i in range(6)],
+         [ "BdotN","BdotN","BdotN","cross","cross","cross",],
+        #  [ "BdotN","BdotN",  "cross","cross",],
+        #  [ "BdotN","BdotN",  "cross","cross",],
+        #  [ "BdotN","BdotN",  "cross","cross",],
+         [ "Se",]*6,
+        ],
+        layout="constrained",
+        # width_ratios=[5,1,5],
+        height_ratios=[0.6,1.5,2],
+        figsize=latexplot.get_size(subplots=(3,2))
+    )
+    plt.sca(axd["Se"])
+    plt.scatter(
+        np.arange(len(Bnormal_from_1_over_R_field_inductance)),
+        abs(Bnormal_from_1_over_R_field_inductance),
+        # ".",
+        s=1,
+        label=r"$S_{e, inductance}$",
+    )
+    plt.semilogy(
+        fit_exponential_rate(abs(Bnormal_from_1_over_R_field_inductance)),
+        "-",
+        label=r"$S_{e, inductance}$ fit",
+    )
+
+
+    plt.scatter(
+        np.arange(len(Bnormal_from_1_over_R_field_transfer)),
+        abs(Bnormal_from_1_over_R_field_transfer),
+        # ".",
+        s=1,
+        label=r"$S_{e, transfer}$",
+    )
+    plt.semilogy(
+        fit_exponential_rate(abs(Bnormal_from_1_over_R_field_transfer)),
+        "-",
+        label=r"$S_{e, transfer}$ fit",
+    )
+    plt.grid()
+    plt.legend()
+    plt.xlabel("Index of the Singular Vector $U_i$")
+    plt.ylabel(r"$S_e$ value")
+    # plt.ylabel(r"Efficiency Sequence $S_e = U^T \cdot \vec{B}_{ext, n}$")
+    plt.title(r"Efficiency Sequence $S_e$")
+
+
+    # Crossection plot
+    latexplot.set_cmap(3)
+    plt.sca(axd["cross"])
+    whichPlot = 0
+    plt.plot(
+        R_slice_outer[whichPlot, :],
+        Z_slice_outer[whichPlot, :],
+        label="$\mathcal{D}$ computational",
+        color=plt.rcParams['axes.prop_cycle'].by_key()['color'][0]
+    )
+    plt.plot(
+        R_slice_middle[whichPlot, :],
+        Z_slice_middle[whichPlot, :],
+        label="$\mathcal{M}$ middle",
+        color=plt.rcParams['axes.prop_cycle'].by_key()['color'][1]
+    )
+    plt.plot(
+        R_slice_plasma[whichPlot, :],
+        Z_slice_plasma[whichPlot, :],
+        label="$\mathcal{S}$ plasma",
+        color=plt.rcParams['axes.prop_cycle'].by_key()['color'][2]
+    )
+    plt.gca().set_aspect("equal", adjustable="box")
+    plt.title("Cross-Sections $\phi=0$") 
+    plt.xlabel("R")
+    plt.ylabel("Z")
+    # plt.xlim([Rmin, Rmax])
+    plt.xlim([-0.5,1.7])
+    plt.legend()#fontsize="x-small")
+
+
+    for svdi in range(6):
+        plt.sca(axd[f"svd{svdi}"])
+        
+        data = np.reshape(
+            svd_u_transferMatrix_uv[0, svdi, :],
+            [nu_plasma, nv_plasma],
+            order="F",
+        )
+        plt.imshow(data)
+        plt.tick_params(
+            axis='both',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom=False,      # ticks along the bottom edge are off
+            top=False,         # ticks along the top edge are off
+            left=False,
+            right=False,
+            labelbottom=False,
+            labelleft=False)
+        # plt.colorbar()
+        plt.title(
+            f"$U_{svdi+1}$"
+            # + f"\ns={svd_s_transferMatrix[0,svdi]:3f}",
+            # fontsize="x-small",
+        )
+
+        
+    plt.sca(axd["BdotN"])
+    plt.imshow(Bnormal_from_1_over_R_field_uv, aspect='auto')
+    # plt.colorbar()
+    plt.title(r"$\vec{B}_{ext} \cdot \vec{n}$ on surface $\mathcal{D}$")
+    plt.xlabel(r"toroidal angle $\phi$")
+    plt.ylabel(r"poloidal angle $\theta$")
+    plt.gcf().get_layout_engine().set(w_pad=0.01)
+    latexplot.savenshow("plots/bdistrib_examples/bdistrib_plot")
+    
 
 if __name__ == "__main__":
 
