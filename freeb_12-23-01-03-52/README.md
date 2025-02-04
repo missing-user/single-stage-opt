@@ -1,0 +1,1 @@
+Attempt at QH optimization with low aspect ratio (10). Failiure case, may be interesting to discuss.
