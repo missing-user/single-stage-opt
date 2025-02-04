@@ -4,6 +4,7 @@ import matplotlib
 if not interactive:
   matplotlib.use("pgf")
 #   matplotlib.use("pdf")
+import matplotlib.layout_engine
 import matplotlib.pyplot as plt
 
 fontsize =  10.95# pt
@@ -44,6 +45,7 @@ def set_cmap(cycles:int|list=4):
 
     plt.rcParams['axes.prop_cycle'] = matplotlib.cycler(color=[plt.cm.plasma(e) for e in evalpoints])
     plt.rcParams['image.cmap'] = 'plasma'
+    return plt.rcParams['axes.prop_cycle']
 # set_cmap()
 
 
@@ -84,7 +86,8 @@ def figure(fraction=1, subplots=(1, 1)):
     return plt.figure(figsize=get_size(fraction, subplots))
 
 def savenshow(basename):
-    plt.tight_layout()
+    if not isinstance(plt.gcf().get_layout_engine(), matplotlib.layout_engine.ConstrainedLayoutEngine):
+        plt.tight_layout()
     plt.savefig(basename + ".png")
     plt.savefig(basename + ".pdf")
     plt.savefig(basename + ".pgf")
