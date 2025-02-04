@@ -1,0 +1,1 @@
+Had to restart the optimization multiple times with different bounds because the optimizer was running into the wall. I continued the optimization from the last valid results starting at the next higher resolution, therefore the results were obtained over multiple days and were copied into this folder.
