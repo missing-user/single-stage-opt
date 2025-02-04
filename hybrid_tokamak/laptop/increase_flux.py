@@ -51,7 +51,7 @@ equil.unfix("phiedge")
 with ScratchDir(".fluxincrease") as tmpdir: 
     # prob = objectives.ConstrainedProblem(qs.total, tulples_nlc)
     util.proc0_print(f"Free dofs of problem", equil.dof_names)
-    step_size = 1e-3
+    step_size = phiedge/5
     steps = int(np.ceil((target_flux - phiedge) / step_size))
     for i in range(1,steps+1):
         target_phi = min(target_flux, phiedge + i * step_size)
@@ -61,3 +61,5 @@ with ScratchDir(".fluxincrease") as tmpdir:
         equil.x = np.array([target_phi])
         equil.run()
         print("Aspect ratio now at", equil.boundary.aspect_ratio())
+
+equil.boundary.plot(close=True, show=True)
