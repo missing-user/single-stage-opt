@@ -15,8 +15,8 @@ import subprocess
 import sys
 import logging
 from simsopt import util
-from hybrid_tokamak.laptop.spec_rename import SpecRename
-from hybrid_tokamak.laptop.spec_backoff import SpecBackoff
+from qfb_optimization.spec_rename import SpecRename
+from qfb_optimization.spec_backoff import SpecBackoff
 from monty.tempfile import ScratchDir
 mpi = MpiPartition()
 

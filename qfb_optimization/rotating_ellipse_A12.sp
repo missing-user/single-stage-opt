@@ -424,10 +424,10 @@ Vns(7,7)    =  0.000000000000000E+00 Bns(7,7)    = -1.247396877204966E-08 Vnc(7,
  c05factor   =   1.000000000000000E-04
  LreadGF     =         T
  mfreeits    =        16
- gBntol      =   1.000000000000000E-06
+ gBntol      =   1.000000000000000E-08
  gBnbld      =   6.660000000000000E-01
  vcasingeps  =   1.000000000000000E-10
- vcasingtol  =   1.000000000000000E-09
+ vcasingtol  =   1.000000000000000E-08
  vcasingits  =         8
  vcasingper  =         1
  vcNt        =       256

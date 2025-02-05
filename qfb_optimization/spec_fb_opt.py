@@ -15,20 +15,20 @@ import subprocess
 import sys
 import logging
 from simsopt import util
-from hybrid_tokamak.laptop.spec_rename import SpecRename
-from hybrid_tokamak.laptop.spec_backoff import SpecBackoff
+from qfb_optimization.spec_rename import SpecRename
+from qfb_optimization.spec_backoff import SpecBackoff
 import py_spec.output
 
-import hybrid_tokamak.laptop.latexplot as latexplot
+import qfb_optimization.latexplot as latexplot
 mpi = MpiPartition()
 
 util.log(logging.INFO)
 
 """
 Run either fixed or quasi-free-boundary spec optimization to compare the results:
-mpiexec -n 4 -map-by node:PE=1 --display map bash -c 'python -m hybrid_tokamak.laptop.spec_fb_opt'
+mpiexec -n 4 -map-by node:PE=1 --display map bash -c 'python -m qfb_optimization.spec_fb_opt'
 or:
-mpiexec -n 4 -map-by node:PE=1 --display map bash -c 'python -m hybrid_tokamak.laptop.spec_fb_opt --freeboundary'
+mpiexec -n 4 -map-by node:PE=1 --display map bash -c 'python -m qfb_optimization.spec_fb_opt --freeboundary'
 """
 
 class VmecSpecDependency(mhd.Vmec):
@@ -68,7 +68,7 @@ if len(sys.argv)>=2:
     
 
 if not only_plot:
-    equil = SpecBackoff("hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp", mpi, verbose=True, tolerance=1e-10, keep_all_files=False, max_attempts=3)
+    equil = SpecBackoff("qfb_optimization/rotating_ellipse_fb_low.sp", mpi, verbose=True, tolerance=1e-10, keep_all_files=False, max_attempts=3)
 
     equil.lib.inputlist.odetol = 1e-6
     equil.lib.inputlist.nptrj[0] = 8
@@ -90,7 +90,7 @@ if not only_plot:
         surf = equil.boundary.copy()
     aspect_target = surf.aspect_ratio()
 
-vmec = VmecSpecDependency("hybrid_tokamak/laptop/input.rot_ellipse", mpi, verbose=False, keep_all_files=False)
+vmec = VmecSpecDependency("qfb_optimization/input.rot_ellipse", mpi, verbose=False, keep_all_files=False)
 vmec.boundary = surf
 vmec.indata.phiedge = phiedge
 qs = mhd.QuasisymmetryRatioResidual(vmec, surfaces=np.linspace(0.1, 1, 16), helicity_m=1, helicity_n=0, ntheta=32, nphi=32)
@@ -186,7 +186,7 @@ if not only_plot:
         if mpi.proc0_world:
             destpath = os.path.join(timestampdir, f"mpol{mmax}/")
             if freeboundary:
-                srcpath ="hybrid_tokamak/laptop/rotating_ellipse_fb_low_000_*"
+                srcpath ="qfb_optimization/rotating_ellipse_fb_low_000_*"
             else:
                 srcpath = "input.rot_ellipse_*"
             subprocess.check_call(["mkdir", "-p", destpath])
@@ -276,7 +276,7 @@ if mpi.proc0_world:
     # Copy the poincare stuff
     destpath = os.path.join(timestampdir, "")
     if freeboundary:
-        srcpath ="hybrid_tokamak/laptop/rotating_ellipse_fb_low_000_*"
+        srcpath ="qfb_optimization/rotating_ellipse_fb_low_000_*"
     else:
         srcpath = "input.rot_ellipse_*"
     subprocess.check_call(["mkdir", "-p", destpath])

@@ -62,7 +62,7 @@ if __name__ == "__main__":
             vmec = mhd.Vmec(filename, verbose=False)
             specf = filename.replace("input.", "")
         else:
-            vmec = mhd.Vmec("hybrid_tokamak/laptop/input.rot_ellipse", verbose=False)
+            vmec = mhd.Vmec("qfb_optimization/input.rot_ellipse", verbose=False)
             with SpecRename(filename) as specf:
                 print(f"renamed {filename} to {specf}")
                 spec = mhd.Spec(specf, tolerance=1e-10)

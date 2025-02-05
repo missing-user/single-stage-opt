@@ -1,4 +1,3 @@
-! Modified https://github.com/hiddenSymmetries/simsopt/blob/d6bea2bd62b76f46e0a3bbcdecf1944a35d5b92b/examples/2_Intermediate/inputs/input.rotating_ellipse
 &INDATA
 delt=0.8
 niter=5000
