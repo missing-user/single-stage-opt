@@ -22,7 +22,7 @@ import bdistrib_io
 pio.templates.default = "plotly_dark"
 
 
-cache = diskcache.Cache("./cache")
+cache = diskcache.Cache("./.cachedir")
 long_callback_manager = dash.long_callback.DiskcacheLongCallbackManager(cache)
 
 app = dash.Dash(

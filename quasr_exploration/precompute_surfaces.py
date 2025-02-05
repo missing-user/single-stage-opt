@@ -6,8 +6,8 @@ import os
 
 from pathlib import Path
 
-from quasr_coil_check import bdistrib_io
-from quasr_coil_check import surfgen
+from quasr_exploration import bdistrib_io
+from quasr_exploration import surfgen
 
 
 def compute_B(coils, surface) -> np.ndarray:

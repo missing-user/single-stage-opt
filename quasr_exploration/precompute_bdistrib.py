@@ -4,8 +4,8 @@ import simsopt.field
 import subprocess
 from pathlib import Path
 
-from quasr_coil_check import bdistrib_io
-from quasr_coil_check import precompute_surfaces
+from quasr_exploration import bdistrib_io
+from quasr_exploration import precompute_surfaces
 
 
 def bdistrib_for_surfaces(
@@ -35,7 +35,7 @@ def bdistrib_for_surfaces(
     subprocess.call(
         ["rm", "*.dat"]
     )  # Delete Debug Logs cause I don't know how to disable them
-    subprocess.call(["rm", "quasr_coil_check/*.dat"])
+    subprocess.call(["rm", "quasr_exploration/*.dat"])
 
 
 if __name__ == "__main__":

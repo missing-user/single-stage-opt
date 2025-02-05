@@ -790,7 +790,8 @@ if __name__ == "__main__":
 
     import sys
 
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print("Error! You must specify 1 argument: the bdistrib_out.XXX.nc file.")
         exit(1)
-    main(sys.argv[1])
+    for filename in sys.argv[1:]:
+        main(filename)
