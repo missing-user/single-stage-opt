@@ -29,9 +29,6 @@ REGCOIL_IN_TMP_PATH = os.path.join(tmpdir,"regcoil_in.python_generated")
 REGCOIL_OUT_TMP_PATH = os.path.join(tmpdir,"regcoil_out.python_generated.nc")
 PLASMA_PATH = os.path.join(tmpdir,"wout_surfaces_python_generated.nc")
 
-# REGCOIL_OUT_TMP_PATH = "replicate_lgradb/tmp/regcoil_out.python_generated.nc"
-# PLASMA_PATH = "replicate_lgradb/tmp/wout_surfaces_python_generated.nc"
-
 class Memoization:
     def __init__(self, f):
         self.f = f
