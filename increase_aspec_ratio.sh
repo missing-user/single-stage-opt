@@ -3,7 +3,7 @@ set -x
 # Slowly increase phiedge to get a larger aspect ratio configuration
 # Set file paths
 EXECUTABLE=~/SPEC/xspec
-INPUT_FILE=hybrid_tokamak/laptop/rotating_ellipse_fb_low.sp
+INPUT_FILE=qfb_optimization/rotating_ellipse_fb_low.sp
 RESULT_FILE="${INPUT_FILE}.end"
 
 # Number of iterations

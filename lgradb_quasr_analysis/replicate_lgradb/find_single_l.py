@@ -16,7 +16,7 @@ if not "regcoil" in os.getenv("PATH"):
     raise RuntimeError(
         'The regcoil executable should be added to the PATH environment variable:\nexport PATH="$PATH:/home/<user>/regcoil"'
     )
-from quasr_coil_check import bdistrib_io
+from quasr_exploration import bdistrib_io
 from scipy.io import netcdf_file
 
 from joblib import Memory

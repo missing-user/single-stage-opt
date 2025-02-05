@@ -1,6 +1,6 @@
 .vscode/
 */.cachedir/
-quasr_coil_check/QUASR_db/
+quasr_exploration/QUASR_db/
 *.dat 
 *.sp.h5 
 *.sp.DF

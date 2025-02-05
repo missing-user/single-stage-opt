@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/home/missinguser/CSE/single-stage-opt/hybrid_tokamak/laptop/")
+sys.path.append("../../qfb_optimization/")
 import latexplot
 latexplot.set_cmap(3)
 import matplotlib.pyplot as plt

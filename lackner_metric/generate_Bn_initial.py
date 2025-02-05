@@ -3,7 +3,7 @@ from simsopt import mhd
 import simsopt.geo
 import numpy as np
 import sys
-sys.path.append("/home/missinguser/CSE/single-stage-opt/")
+sys.path.append("../")
 from quasr_exploration import bdistrib_io
 import subprocess
 

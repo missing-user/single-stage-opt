@@ -1,6 +1,6 @@
 # %%
 import sys
-sys.path.append("../../hybrid_tokamak/laptop/")
+sys.path.append("../../qfb_optimization/")
 import latexplot
 latexplot.set_cmap(3)
 import numpy as np
@@ -18,7 +18,7 @@ from simsopt.mhd.vmec_diagnostics import vmec_compute_geometry
 
 
 import pandas as pd
-df:pd.DataFrame = pd.read_pickle("../../quasr_coil_check/QUASR_db/QUASR_08072024.pkl")
+df:pd.DataFrame = pd.read_pickle("../../quasr_exploration/QUASR_db/QUASR_08072024.pkl")
 
 """
 Sample 200 configurations with 4, 6, and 24 coils and plot the L_{filament} to LgradB correlations. 
@@ -166,7 +166,8 @@ for n_coils, group in dff.groupby("$n_{coils}$"):
 # Add legend, labels, and color bar
 plt.xlabel("$L_{filament}$")
 plt.ylabel("$L^*_{\\nabla \\vec{B}}$")
-plt.title("Clustering of $L_{filament}$ behavior by $n_{coils}$")
+plt.title("Clustering of $L_{filament}$ behavior by $n_{coils}$") 
 plt.legend()
+plt.grid()
 
 latexplot.savenshow("coil_distances")
