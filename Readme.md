@@ -10,3 +10,10 @@ We contribute a new implementation of the virtual-casing integration routine to 
 This thesis further includes the systematic validation of both a recently developed proxy for plasma-coil distance, and a novel proxy based on the theory of efficient fields, on a large dataset of quasi-symmetric vacuum equilibria. 
 
 ## Overview
+- `plots/` most simple scripts to generate the plots for my thesis can be found here. More complex plotting were sometimes written as part of the main scripts of the respective tasks instead.
+- `quasr_exploration` Interactive tool for exploring coil complexity, efficiency sequences and geometries of configurations in the QUASR database. 
+- `lgradb_quasr_analysis` validation of $L_{\nabla B}^*$ and related the magnetic gradient length scale on a bigger dataset of stellarators. Evaluation of the theory of efficient fields. 
+- `synthetic_normal_fields` Exploring whether the Fourier spectrum of the normal magnetic field on a simple boundary can be correlated with coil complexity 
+- `qfb_optimization` refers to quasi-free-boundary, so stellarator optimization using the normal magnetic field as the degree of freedom. 
+Folders starting with `fixb` or `freeb` contain the quasi free boundary optimization results at various points throughout development. 
+Similar results can be optained by running `qfb_optimization/spec_fb_opt.py`.
