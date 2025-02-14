@@ -6,7 +6,7 @@ Considering coil complexity early during the first-stage optimization is crucial
 This thesis explores different methods for quantifying and improving coil complexity, especially plasma-coil-distance, during first-stage optimization.
 In particular, we investigate whether coil complexity can be reduced by choosing different degrees of freedom for the first-stage optimization. The external, normal magnetic field on a computational boundary is used as the degree of freedom for stellarator optimization ([quasi-free boundary optimization](https://doi.org/10.1017/S0022377821000271 )), which is performed using the Stepped Pressure Equilibrium Code ([SPEC](https://github.com/PrincetonUniversity/SPEC)). 
 Comparison of the resulting quasi-free-boundary optimized equilibria with those from classical fixed-boundary optimizations does not reveal any benefits in terms of the attainable plasma-coil distance and quasi-symmetry fulfillment. 
-We contribute a new implementation of the virtual-casing integration routine to SPEC, which boasts improved numerical accuracy and speeds up the computation of free-boundary stellarator equilibria by approximately a factor of 20. 
+We contribute [a new implementation of the virtual-casing integration routine to SPEC](https://github.com/PrincetonUniversity/SPEC/pull/217), which boasts improved numerical accuracy and speeds up the computation of free-boundary stellarator equilibria by approximately a factor of 20. 
 This thesis further includes the systematic validation of both a recently developed proxy for plasma-coil distance, and a novel proxy based on the theory of efficient fields, on a large dataset of quasi-symmetric vacuum equilibria. 
 
 ## Overview
